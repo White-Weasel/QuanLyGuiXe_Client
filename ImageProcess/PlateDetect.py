@@ -16,6 +16,7 @@ CONFIDENCE_THRESHOLD = 0.75
 YOLO_TINY_WEIGHT = r"ImageProcess/Network/plate_yolov4_tiny/backup/yolov4-tiny-obj_best.weights"
 YOLO_TINY_CFG = r"ImageProcess/Network/plate_yolov4_tiny/cfg/yolov4-tiny-obj.cfg"
 
+# FIXME: path not exist after installed
 TINY_MODEL = cv2.dnn.readNet(YOLO_TINY_WEIGHT, YOLO_TINY_CFG)
 # MODEL = cv2.dnn.readNet(YOLO_WEIGHT, YOLO_CFG)
 

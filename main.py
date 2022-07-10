@@ -1,11 +1,6 @@
-import time
-import tkinter as tk
-from tkinter import ttk
 from functools import partial
-from MyTkinter.ToolTips import CreateToolTip
-from MyTkinter.MyTkinter import *
+from MyTkinter import *
 import random
-from utls.StopableThread import StopableThread
 
 COLORS = ["red", "orange", "yellow", "green", "blue", "violet", "black", ]
 
@@ -23,15 +18,17 @@ class MainFrame(MyFrame):
     def __init__(self, master: tk.Tk, *args, **kwargs):
         super().__init__(master, *args, **kwargs)
         master.title("Quan ly gui tra xe")
-        master.geometry("1000x600")
+        master.geometry("1000x700")
         master.bind("<Key>", handle_keypress)
+        # noinspection PyUnresolvedReferences
         self.master.protocol('WM_DELETE_WINDOW', self.on_closing)
 
         self._debug = False
-        self.CAMERA_HEIGHT = 300
+        self.CAMERA_HEIGHT = 250
         self.OUTPUT_HEIGHT = 100
         self.auto_entry = tk.BooleanVar()
 
+        """Frames initialize"""
         self.left_frame = MyFrame(self, name='cameras feed')
         self.left_frame.pack(fill=BOTH, expand=NO, side=LEFT)
 
@@ -56,24 +53,26 @@ class MainFrame(MyFrame):
         self.entry_control_btns_frame = MyFrame(self.entry_control_frame, name='entry control btns')
         self.entry_control_btns_frame.pack(side=RIGHT, fill=BOTH, expand=YES)
 
+        """Cam frames widgets"""
         self.l1 = MyLabel(self.face_cam_frame, text="Camera 1")
         self.l1.pack(anchor=NW)
 
         self.l2 = MyLabel(self.plate_cam_frame, text="Camera 2")
         self.l2.pack(side=TOP, anchor=NW)
 
-        self.img1 = PlateDetectCam(master=self.plate_cam_frame,
-                                   img=rf"D:\Project\raw data\yolo_plate_dataset\xemay{random.randint(0, 2000)}.jpg",
-                                   img_height=self.CAMERA_HEIGHT)
+        self.img1 = ImageViewer(master=self.plate_cam_frame,
+                                img_height=self.CAMERA_HEIGHT)
+        self.img1.set_img_file(rf"D:\Project\raw data\yolo_plate_dataset\xemay{random.randint(0, 2000)}.jpg")
         self.img1.pack(side=TOP)
 
         def random_plate_img():
             a = random.randint(0, 2000)
-            self.img1.set_img(rf"D:\Project\raw data\yolo_plate_dataset\xemay{a}.jpg", self.CAMERA_HEIGHT)
+            self.img1.set_img_file(rf"D:\Project\raw data\yolo_plate_dataset\xemay{a}.jpg", self.CAMERA_HEIGHT)
 
         self.b1 = MyButton(self.plate_cam_frame, text='Next random img', height=2, command=partial(random_plate_img))
         self.b1.pack(side=BOTTOM)
 
+        """Result frames"""
         self.plate_detect_result_frame = MyFrame(self.detect_result_frame, name='bien so')
         self.plate_detect_result_frame.pack(fill=BOTH)
         self.l3 = MyLabel(self.plate_detect_result_frame, text="Bien so: ")
@@ -85,7 +84,7 @@ class MainFrame(MyFrame):
         self.face_detect_result_frame.pack(fill=BOTH, pady=25)
         self.l4 = MyLabel(self.face_detect_result_frame, text="Khuon mat: ")
         self.l4.pack(anchor=NW)
-        self.face_detect_ouput_img = MyLabel(self.face_detect_result_frame)
+        self.face_detect_ouput_img = ImageViewer(self.face_detect_result_frame, img_height=100)
         self.face_detect_ouput_img.pack(anchor=NW)
 
         cap = cv2.VideoCapture(0)
@@ -93,6 +92,7 @@ class MainFrame(MyFrame):
                                   output_widget=self.face_detect_ouput_img)
         self.cam1.pack(anchor=CENTER)
 
+        """Entry Control frame"""
         self.snap_btn = MyButton(self.entry_control_btns_frame,
                                  text="Chup anh",
                                  height=3, width=15,
@@ -141,12 +141,14 @@ class MainFrame(MyFrame):
         """Toggle frame backgroud color, used to check widget size and location"""
 
         self._debug = not self._debug
+        """Toggle help tooltips"""
         for tt in self.tooptip_list:
             if self._debug:
                 tt.bind()
             else:
                 tt.unbind()
 
+        """Toggle frame bg color"""
         if self._debug:
             for frame in get_all_child_frames(self):
                 frame.configure(bg=random_rgb())
@@ -183,8 +185,6 @@ if __name__ == '__main__':
 
 
     def handle_keypress(event: tk.Event):
-        """Print the key code to the key pressed"""
-        # print(event.keycode)
         if event.keycode == 27:
             root.destroy()
 
