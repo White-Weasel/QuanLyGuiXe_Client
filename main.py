@@ -60,8 +60,8 @@ class MainFrame(MyFrame):
         self.l2 = MyLabel(self.plate_cam_frame, text="Camera 2")
         self.l2.pack(side=TOP, anchor=NW)
 
-        self.img1 = ImageViewer(master=self.plate_cam_frame,
-                                img_height=self.CAMERA_HEIGHT)
+        self.img1 = PlateDetectWidget(master=self.plate_cam_frame,
+                                      img_height=self.CAMERA_HEIGHT)
         self.img1.set_img_file(rf"D:\Project\raw data\yolo_plate_dataset\xemay{random.randint(0, 2000)}.jpg")
         self.img1.pack(side=TOP)
 
@@ -174,6 +174,7 @@ class MainFrame(MyFrame):
 
     @staticmethod
     def widget_tooltips_content(frame: MyFrame):
+        """return all parent widgets names"""
         result = frame.winfo_name()
         for f in get_all_master_frames(frame):
             result = f"{f.winfo_name()}\n" + result

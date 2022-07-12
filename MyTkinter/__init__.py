@@ -47,6 +47,17 @@ def getAllThread(frame):
         return []
 
 
+def img_crop(img: numpy.ndarray, crop_area):
+    (x, y, w, h) = crop_area
+    x1 = x + w
+    y1 = y + h
+    if x < 0:
+        x = 0
+    if y < 0:
+        y = 0
+    return img[y:y1, x:x1]
+
+
 class MyFrame(tk.Frame):
     def __init__(self, master, *args, **kwargs):
         super().__init__(master, *args, **kwargs)
@@ -228,8 +239,7 @@ class FaceDetectCam(VideoFeed):
 
     def output_frame_to_widget(self, widget):
         if len(self.detect_result) > 0:
-            (x, y, w, h) = self.detect_result[0]
-            face_img = self.frame[y:y + h, x:x + w]
+            face_img = img_crop(self.frame, self.detect_result[0])
             face_img = photo_from_ndarray(face_img, self.output_height)
             setLabelImg(widget, face_img)
 
@@ -281,6 +291,21 @@ class ImageViewer(tk.Label):
     def set_img_file(self, file_path: str, img_height: int = None):
         img = cv2.imread(file_path)
         self.set_img(img, img_height)
+
+
+class PlateDetectWidget(ImageViewer):
+    def __init__(self, network=ImageProcess.PlateDetect.TINY_MODEL, min_confidence: float = 0.5, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.network = network
+        self.min_confidence = min_confidence
+
+    def set_img(self, img: numpy.ndarray = None, img_height: int = None):
+        if img_height is None:
+            img_height = self.img_height
+        self.cv2_img = img
+        ImageProcess.PlateDetect.detectPlate(self.cv2_img, draw=True)
+        self.photo = photo_from_ndarray(self.cv2_img, img_height)
+        setLabelImg(self, self.photo)
 
 
 from .ToolTips import *

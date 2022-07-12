@@ -18,6 +18,8 @@ YOLO_TINY_CFG = r"ImageProcess/Network/plate_yolov4_tiny/cfg/yolov4-tiny-obj.cfg
 
 # FIXME: path not exist after installed
 TINY_MODEL = cv2.dnn.readNet(YOLO_TINY_WEIGHT, YOLO_TINY_CFG)
+
+
 # MODEL = cv2.dnn.readNet(YOLO_WEIGHT, YOLO_CFG)
 
 
@@ -52,6 +54,8 @@ def post_process(img, detect_result, min_confidence: float = CONFIDENCE_THRESHOL
 
 
 def detectPlate(img, network=TINY_MODEL, min_confidence: float = 0.5, draw: bool = True):
+    if network is None:
+        network = TINY_MODEL
     result = pre_process(img, network)
     return post_process(img, result, min_confidence=min_confidence, draw=draw)
 
