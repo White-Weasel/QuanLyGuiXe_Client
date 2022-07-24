@@ -1,10 +1,12 @@
 import threading
 from tkinter import *
 import tkinter as tk
+from typing import Union
 
 import numpy
 
 import ImageProcessor.PlateDetect
+import ImageProcessor.PlateRecognition
 from ImageProcessor.FacialDetect import detectFace
 import cv2
 import imutils
@@ -142,6 +144,7 @@ class ToolTip(object):
         x = x + self.widget.winfo_rootx() + 57
         y = y + cy + self.widget.winfo_rooty() + 27
         self.tipwindow = tw = Toplevel(self.widget)
+        # noinspection PyTypeChecker
         tw.wm_overrideredirect(1)
         tw.wm_geometry("+%d+%d" % (x, y))
         label = Label(tw, text=self.text, justify=LEFT,
@@ -159,9 +162,11 @@ class ToolTip(object):
 def createToolTip(widget, text):
     toolTip = ToolTip(widget)
 
+    # noinspection PyUnusedLocal
     def enter(event):
         toolTip.showtip(text)
 
+    # noinspection PyUnusedLocal
     def leave(event):
         toolTip.hidetip()
 
@@ -187,6 +192,19 @@ def photo_from_ndarray(img, height: int = None):
 def setLabelImg(label: tk.Label, img):
     label.imgtk = img
     label.configure(image=img)
+
+
+def print_to_tet_widget(widget: Union[MyText, MyEntry], text):
+    """print to a disabled text widget"""
+    if widget['state'] == DISABLED:
+        widget.config(state=NORMAL)
+        widget.delete(0, END)
+        widget.insert(0, text)
+        widget.config(state=DISABLED)
+    else:
+        widget.delete(0, END)
+        widget.insert(0, text)
+    return
 
 
 class VideoFeed(tk.Label):
@@ -294,18 +312,36 @@ class ImageViewer(tk.Label):
 
 
 class PlateDetectWidget(ImageViewer):
-    def __init__(self, network=ImageProcessor.PlateDetect.TINY_MODEL, min_confidence: float = 0.5, *args, **kwargs):
+    def __init__(self, network=ImageProcessor.PlateDetect.PLATE_DETECT_TINY_MODEL,
+                 min_confidence: float = 0.5,
+                 img_out_widget: ImageViewer = None,
+                 output_height: int = 100,
+                 txt_out_widget: Union[MyText, MyEntry] = None,
+                 *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.network = network
         self.min_confidence = min_confidence
+        self.img_out_widget = img_out_widget
+        self.txt_out_widget = txt_out_widget
+        self.output_height = output_height
 
     def set_img(self, img: numpy.ndarray = None, img_height: int = None):
         if img_height is None:
             img_height = self.img_height
         self.cv2_img = img
-        ImageProcessor.PlateDetect.detectPlate(self.cv2_img, draw=True)
+        detect_result = ImageProcessor.PlateDetect.detectPlate(self.cv2_img, draw=True)
         self.photo = photo_from_ndarray(self.cv2_img, img_height)
         setLabelImg(self, self.photo)
+
+        plate_img = img_crop(self.cv2_img, detect_result[0])
+        recognise_result = ImageProcessor.PlateRecognition.recognisePlate(plate_img, draw=False)
+        if self.img_out_widget is not None:
+            setLabelImg(self.img_out_widget, photo_from_ndarray(plate_img, self.output_height))
+        plate = ''
+        for b in recognise_result:
+            plate += b.label
+        if self.txt_out_widget is not None:
+            print_to_tet_widget(self.txt_out_widget, plate)
 
 
 from .ToolTips import *

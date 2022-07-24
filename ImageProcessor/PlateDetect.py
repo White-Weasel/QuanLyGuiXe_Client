@@ -13,11 +13,11 @@ CONFIDENCE_THRESHOLD = 0.75
 # Network files location
 # YOLO_WEIGHT = r"ImageProcessor/Network/plate_yolov4/backup/yolov4-obj_best.weights"
 # YOLO_CFG = r"ImageProcessor/Network/plate_yolov4/cfg/yolov4-obj.cfg"
-YOLO_TINY_WEIGHT = r"D:\Project\QuanLyGuiXe_Client\ImageProcessor\Network\plate_yolov4_tiny\backup\yolov4-tiny-obj_best.weights"
-YOLO_TINY_CFG = r"D:\Project\QuanLyGuiXe_Client\ImageProcessor\Network\plate_yolov4_tiny\cfg\yolov4-tiny-obj.cfg"
+PLATE_DETECT_YOLO_TINY_WEIGHT = r"D:\Project\QuanLyGuiXe_Client\ImageProcessor\Network\plate_yolov4_tiny\backup\yolov4-tiny-obj_best.weights"
+PLATE_DETECT_YOLO_TINY_CFG = r"D:\Project\QuanLyGuiXe_Client\ImageProcessor\Network\plate_yolov4_tiny\cfg\yolov4-tiny-obj.cfg"
 
 # FIXME: path not exist after installed
-TINY_MODEL = cv2.dnn.readNet(YOLO_TINY_WEIGHT, YOLO_TINY_CFG)
+PLATE_DETECT_TINY_MODEL = cv2.dnn.readNet(PLATE_DETECT_YOLO_TINY_WEIGHT, PLATE_DETECT_YOLO_TINY_CFG)
 
 
 # MODEL = cv2.dnn.readNet(YOLO_WEIGHT, YOLO_CFG)
@@ -53,15 +53,15 @@ def post_process(img, detect_result, min_confidence: float = CONFIDENCE_THRESHOL
     return boxes
 
 
-def detectPlate(img, network=TINY_MODEL, min_confidence: float = 0.5, draw: bool = True):
+def detectPlate(img, network=PLATE_DETECT_TINY_MODEL, min_confidence: float = 0.5, draw: bool = True):
     if network is None:
-        network = TINY_MODEL
+        network = PLATE_DETECT_TINY_MODEL
     result = pre_process(img, network)
     return post_process(img, result, min_confidence=min_confidence, draw=draw)
 
 
 if __name__ == '__main__':
-    model = cv2.dnn.readNet(YOLO_TINY_WEIGHT, YOLO_TINY_CFG)
+    model = cv2.dnn.readNet(PLATE_DETECT_YOLO_TINY_WEIGHT, PLATE_DETECT_YOLO_TINY_CFG)
 
     cap = cv2.VideoCapture(r"D:\Project\raw data\raw\20220701_171831.mp4")
     # img = cv2.imread(rf"D:\Project\raw data\raw\20220701_171809.jpg")

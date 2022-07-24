@@ -20,6 +20,7 @@ def random_rgb():
 
 class GUI(tkinter.Tk):
     """Import this in main script"""
+
     def __init__(self, *args, **kwargs):
         super(GUI, self).__init__(*args, **kwargs)
         self.mainFrame = MainFrame(self)
@@ -71,14 +72,42 @@ class MainFrame(MyFrame):
         self.entry_control_btns_frame = MyFrame(self.entry_control_frame, name='entry control btns')
         self.entry_control_btns_frame.pack(side=RIGHT, fill=BOTH, expand=YES)
 
+        """Result frames"""
+        self.plate_recognise_result_frame = MyFrame(self.detect_result_frame, name='bien so')
+        self.plate_recognise_result_frame.pack(fill=BOTH, side=TOP)
+        self.l3 = MyLabel(self.plate_recognise_result_frame, text="Bien so: ")
+        self.l3.pack(side=LEFT)
+        self.plate_textbox = MyEntry(self.plate_recognise_result_frame, state=DISABLED, font='TkTextFont 16')
+        self.plate_textbox.pack(side=RIGHT, fill=X, expand=YES)
+
+        self.face_detect_result_frame = MyFrame(self.detect_result_frame, name='khuon mat')
+        self.face_detect_result_frame.pack(fill=BOTH, pady=25, side=LEFT)
+        self.l4 = MyLabel(self.face_detect_result_frame, text="Khuon mat: ")
+        self.l4.pack(anchor=NW)
+        self.face_detect_ouput_img = ImageViewer(self.face_detect_result_frame, img_height=100)
+        self.face_detect_ouput_img.pack(anchor=NW)
+
+        self.plate_detect_result_frame = MyFrame(self.detect_result_frame, name='anh bien so')
+        self.plate_detect_result_frame.pack(fill=BOTH, pady=25, side=RIGHT)
+        self.l5 = MyLabel(self.plate_detect_result_frame, text='Bien so: ')
+        self.l5.pack(anchor=NW)
+        self.plate_detect_output_img = ImageViewer(self.plate_detect_result_frame, img_height=100)
+        self.plate_detect_output_img.pack(anchor=NW)
+
         """Cam frames widgets"""
         self.l1 = MyLabel(self.face_cam_frame, text="Camera 1")
         self.l1.pack(anchor=NW)
+        cap = cv2.VideoCapture(0)
+        self.cam1 = FaceDetectCam(master=self.face_cam_frame, cap=cap, img_height=self.CAMERA_HEIGHT,
+                                  output_widget=self.face_detect_ouput_img)
+        self.cam1.pack(anchor=CENTER)
 
         self.l2 = MyLabel(self.plate_cam_frame, text="Camera 2")
         self.l2.pack(side=TOP, anchor=NW)
 
         self.img1 = PlateDetectWidget(master=self.plate_cam_frame,
+                                      img_out_widget=self.plate_detect_output_img,
+                                      txt_out_widget=self.plate_textbox,
                                       img_height=self.CAMERA_HEIGHT)
         self.img1.set_img_file(rf"D:\Project\raw data\yolo_plate_dataset\xemay{random.randint(0, 2000)}.jpg")
         self.img1.pack(side=TOP)
@@ -89,26 +118,6 @@ class MainFrame(MyFrame):
 
         self.b1 = MyButton(self.plate_cam_frame, text='Next random img', height=2, command=partial(random_plate_img))
         self.b1.pack(side=BOTTOM)
-
-        """Result frames"""
-        self.plate_detect_result_frame = MyFrame(self.detect_result_frame, name='bien so')
-        self.plate_detect_result_frame.pack(fill=BOTH)
-        self.l3 = MyLabel(self.plate_detect_result_frame, text="Bien so: ")
-        self.l3.pack(side=LEFT)
-        self.plate_textbox = MyEntry(self.plate_detect_result_frame, state=DISABLED)
-        self.plate_textbox.pack(side=RIGHT, fill=X, expand=YES)
-
-        self.face_detect_result_frame = MyFrame(self.detect_result_frame, name='khuon mat')
-        self.face_detect_result_frame.pack(fill=BOTH, pady=25)
-        self.l4 = MyLabel(self.face_detect_result_frame, text="Khuon mat: ")
-        self.l4.pack(anchor=NW)
-        self.face_detect_ouput_img = ImageViewer(self.face_detect_result_frame, img_height=100)
-        self.face_detect_ouput_img.pack(anchor=NW)
-
-        cap = cv2.VideoCapture(0)
-        self.cam1 = FaceDetectCam(master=self.face_cam_frame, cap=cap, img_height=self.CAMERA_HEIGHT,
-                                  output_widget=self.face_detect_ouput_img)
-        self.cam1.pack(anchor=CENTER)
 
         """Entry Control frame"""
         self.snap_btn = MyButton(self.entry_control_btns_frame,
