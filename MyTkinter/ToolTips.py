@@ -6,7 +6,7 @@ class CreateToolTip(object):
     create a tooltip for a given widget
     """
 
-    def __init__(self, widget:tk.Widget, text: str):
+    def __init__(self, widget: tk.Widget, text: str):
         self.waittime = 500  # miliseconds
         self.wraplength = 180  # pixels
         self.widget = widget

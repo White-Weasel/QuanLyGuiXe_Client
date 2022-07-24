@@ -4,8 +4,8 @@ import tkinter as tk
 
 import numpy
 
-import ImageProcess.PlateDetect
-from ImageProcess.FacialDetect import detectFace
+import ImageProcessor.PlateDetect
+from ImageProcessor.FacialDetect import detectFace
 import cv2
 import imutils
 from PIL import Image, ImageTk
@@ -294,7 +294,7 @@ class ImageViewer(tk.Label):
 
 
 class PlateDetectWidget(ImageViewer):
-    def __init__(self, network=ImageProcess.PlateDetect.TINY_MODEL, min_confidence: float = 0.5, *args, **kwargs):
+    def __init__(self, network=ImageProcessor.PlateDetect.TINY_MODEL, min_confidence: float = 0.5, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.network = network
         self.min_confidence = min_confidence
@@ -303,7 +303,7 @@ class PlateDetectWidget(ImageViewer):
         if img_height is None:
             img_height = self.img_height
         self.cv2_img = img
-        ImageProcess.PlateDetect.detectPlate(self.cv2_img, draw=True)
+        ImageProcessor.PlateDetect.detectPlate(self.cv2_img, draw=True)
         self.photo = photo_from_ndarray(self.cv2_img, img_height)
         setLabelImg(self, self.photo)
 
