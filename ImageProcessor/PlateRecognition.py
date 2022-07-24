@@ -2,7 +2,7 @@ import cv2
 import numpy
 import numpy as np
 import imutils
-from ImageProcessor import absolute_size_from_relative_size, draw_boxes, BoundingBox
+from ImageProcessor import absolute_size_from_relative_size, draw_boxes, BoundingBox, Plate
 
 # Constants.
 INPUT_WIDTH = 256
@@ -58,7 +58,7 @@ def sort_boxes(boxes: list[BoundingBox]) -> list[BoundingBox]:
     return upper_half + lower_half
 
 
-def post_process(img: numpy.ndarray,
+def post_process(input_img: numpy.ndarray,
                  detect_result,
                  min_confidence: float = CONFIDENCE_THRESHOLD,
                  draw: bool = True):
@@ -75,22 +75,22 @@ def post_process(img: numpy.ndarray,
 
         indices = cv2.dnn.NMSBoxes(boxes, confidences, min_confidence, NMS_THRESHOLD)
         boxes = [boxes[i] for i in indices]
-        a_boxes = absolute_size_from_relative_size(boxes, img.shape[:2])
         output += [BoundingBox(b, label) for b in boxes]
         if draw:
-            draw_boxes(img, a_boxes, (250, 250, 50), 2, label=label)
+            a_boxes = absolute_size_from_relative_size(boxes, input_img.shape[:2])
+            draw_boxes(input_img, a_boxes, (250, 250, 50), 2, label=label)
     output = sort_boxes(output)
     return output
 
 
-def recognisePlate(img,
+def recognisePlate(input_img,
                    network=RECOGNISE_PLATE_TINY_MODEL,
                    min_confidence: float = 0.5,
                    draw: bool = True):
     if network is None:
         network = RECOGNISE_PLATE_TINY_MODEL
-    result = pre_process(img, network)
-    return post_process(img, result, min_confidence=min_confidence, draw=draw)
+    result = pre_process(input_img, network)
+    return post_process(input_img, result, min_confidence=min_confidence, draw=draw)
 
 
 if __name__ == '__main__':

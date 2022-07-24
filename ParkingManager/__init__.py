@@ -109,7 +109,8 @@ class MainFrame(MyFrame):
                                       img_out_widget=self.plate_detect_output_img,
                                       txt_out_widget=self.plate_textbox,
                                       img_height=self.CAMERA_HEIGHT)
-        self.img1.set_img_file(rf"D:\Project\raw data\yolo_plate_dataset\xemay{random.randint(0, 2000)}.jpg")
+        # FIXME: PlateProcess.py predicts this differently
+        self.img1.set_img_file(rf"D:\Project\raw data\yolo_plate_dataset\xemay567.jpg")
         self.img1.pack(side=TOP)
 
         def random_plate_img():

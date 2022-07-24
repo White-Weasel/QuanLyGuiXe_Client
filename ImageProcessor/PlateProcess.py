@@ -19,16 +19,16 @@ def img_crop(input_img: numpy.ndarray, crop_area):
 
 if __name__ == '__main__':
     fno = random.randint(1, 2000)
-    img = cv2.imread(rf"D:\Project\raw data\yolo_plate_dataset\xemay239.jpg")
+    img = cv2.imread(rf"D:\Project\raw data\yolo_plate_dataset\xemay567.jpg")
     while True:
         detect_result = PlateDetect.detectPlate(img)
 
         plate_img = img_crop(img, detect_result[0])
         rh, rw = plate_img.shape[:2]
         plate_img = imutils.resize(plate_img, height=300)
-        plate_img = cv2.GaussianBlur(plate_img, (15, 15), 0)
+        # plate_img = cv2.GaussianBlur(plate_img, (15, 15), 0)
 
-        re = PlateRecognition.recognisePlate(plate_img)
+        re = PlateRecognition.recognisePlate(plate_img, min_confidence=0.5)
 
         cv2.imshow(f'detect', img)
         cv2.imshow('reco', plate_img)

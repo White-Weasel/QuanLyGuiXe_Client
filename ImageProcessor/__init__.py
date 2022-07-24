@@ -25,11 +25,27 @@ class BoundingBox:
 
 class Plate:
     def __init__(self, box: list[BoundingBox], img: numpy.ndarray):
+        self.upper_half: list[BoundingBox] = []
+        self.lower_half: list[BoundingBox] = []
         self.boxes = box
         self.img = img
+        self.sort_boxes()
 
+    # noinspection PyShadowingNames
     def sort_boxes(self):
-        haft_y = self.img[0]/2
+        half_y = numpy.average([b.y for b in self.boxes])
+        self.upper_half = [b for b in self.boxes if b.y < half_y]
+        self.upper_half.sort()
+        self.lower_half = [b for b in self.boxes if b.y > half_y]
+        self.lower_half.sort()
+        return self.upper_half + self.lower_half
+
+    # noinspection PyShadowingNames
+    def __str__(self):
+        result = ''
+        for b in self.upper_half:
+            result += b.label
+        result += ''
 
 
 def random_color():
@@ -72,8 +88,3 @@ def draw_bounding_boxes(img, boxes: list[BoundingBox], color=(50, 50, 255), *arg
         cv2.rectangle(img, (b.x, b.y), (b.x + b.w, b.y + b.h), color, *args, **kwargs)
         cv2.putText(img, b.label, (b.x, b.y), cv2.FONT_HERSHEY_PLAIN, 2, color, 2)
 
-
-if __name__ == '__main__':
-    a = BoundingBox([1, 2, 3, 4], 'a')
-    b = BoundingBox([5, 6, 7, 8], 'b')
-    pass
