@@ -269,8 +269,8 @@ class FaceDetectCam(VideoFeed):
                 """remove this later"""
                 self.frame = cv2.flip(self.frame, 1)
 
-                # TODO: potential bug here, frame and detect_result should be in local scope only to prevent old
-                #  result being used
+                # TODO: potential bug here, frame and detect_result should be in local scope to prevent old result
+                #  being used
                 self.detect_result = detectFace(self.frame, draw=True)
 
                 imgtk = photo_from_ndarray(self.frame, self.img_height)

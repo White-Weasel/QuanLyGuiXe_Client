@@ -20,7 +20,6 @@ RECOGNISE_PLATE_YOLO_TINY_CFG = r"D:\Project\QuanLyGuiXe_Client\ImageProcessor\N
 LABELS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I',
           'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
 
-# FIXME: path not exist after installed
 RECOGNISE_PLATE_TINY_MODEL = cv2.dnn.readNet(RECOGNISE_PLATE_YOLO_TINY_WEIGHT, RECOGNISE_PLATE_YOLO_TINY_CFG)
 
 
@@ -70,7 +69,7 @@ def post_process(input_img: numpy.ndarray,
     output = []
     for label, boxes_arr in re.items():
         boxes = np.array([c[:4] for c in boxes_arr])
-        # TODO: LABELS.index is not optimized
+        # TODO: LABELS.index is not very optimized
         confidences = [c[5 + LABELS.index(label)] for c in boxes_arr]
 
         indices = cv2.dnn.NMSBoxes(boxes, confidences, min_confidence, NMS_THRESHOLD)

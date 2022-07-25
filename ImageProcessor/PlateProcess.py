@@ -19,7 +19,7 @@ def img_crop(input_img: numpy.ndarray, crop_area):
 
 if __name__ == '__main__':
     fno = random.randint(1, 2000)
-    img = cv2.imread(rf"D:\Project\raw data\yolo_plate_dataset\xemay567.jpg")
+    img = cv2.imread(rf"D:\Project\raw data_\yolo_plate_dataset\xemay567.jpg")
     while True:
         detect_result = PlateDetect.detectPlate(img)
 
