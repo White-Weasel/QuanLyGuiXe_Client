@@ -4,6 +4,7 @@ from functools import partial
 import utls.StopableThread
 from MyTkinter import *
 import random
+from ImageProcessor import img_from_url
 
 COLORS = ["red", "orange", "yellow", "green", "blue", "violet", "black", ]
 DEFAULT_BTN_HEIGHT = 3
@@ -110,12 +111,15 @@ class MainFrame(MyFrame):
                                       txt_out_widget=self.plate_textbox,
                                       img_height=self.CAMERA_HEIGHT)
         # FIXME: PlateProcess.py predicts this differently
-        self.img1.set_img_file(rf"D:\Project\raw data\yolo_plate_dataset\xemay567.jpg")
+        img = img_from_url(r"https://raw.githubusercontent.com/White-Weasel/QuanLyGuiXe_img/master/img/xemay100.jpg")
+        self.img1.set_img(img, self.CAMERA_HEIGHT)
         self.img1.pack(side=TOP)
 
         def random_plate_img():
             a = random.randint(0, 2000)
-            self.img1.set_img_file(rf"D:\Project\raw data\yolo_plate_dataset\xemay{a}.jpg", self.CAMERA_HEIGHT)
+            self.img1.set_img(img_from_url(
+                rf"https://raw.githubusercontent.com/White-Weasel/QuanLyGuiXe_img/master/img/xemay{a}.jpg"),
+                              self.CAMERA_HEIGHT)
 
         self.b1 = MyButton(self.plate_cam_frame, text='Next random img', height=2, command=partial(random_plate_img))
         self.b1.pack(side=BOTTOM)

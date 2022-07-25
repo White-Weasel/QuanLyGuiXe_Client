@@ -1,3 +1,5 @@
+import urllib
+
 import cv2
 import random
 import numpy
@@ -56,6 +58,13 @@ def random_color():
     return result
 
 
+def img_from_url(url: str):
+    url_response = urllib.request.urlopen(url)
+    img_array = numpy.array(bytearray(url_response.read()), dtype=numpy.uint8)
+    img = cv2.imdecode(img_array, -1)
+    return img
+
+
 def absolute_size_from_relative_size(input_arr, size):
     result = []
     (H, W) = size
@@ -87,4 +96,3 @@ def draw_bounding_boxes(img, boxes: list[BoundingBox], color=(50, 50, 255), *arg
     for b in boxes:
         cv2.rectangle(img, (b.x, b.y), (b.x + b.w, b.y + b.h), color, *args, **kwargs)
         cv2.putText(img, b.label, (b.x, b.y), cv2.FONT_HERSHEY_PLAIN, 2, color, 2)
-
