@@ -1,7 +1,8 @@
+import os
 import cv2
 import numpy as np
 import imutils
-from ImageProcessor import absolute_size_from_relative_size, draw_boxes
+from ImageProcessor import absolute_size_from_relative_size, draw_boxes, file_path
 
 # Constants.
 INPUT_WIDTH = 320
@@ -10,11 +11,12 @@ SCORE_THRESHOLD = 0.5
 NMS_THRESHOLD = 0.45
 CONFIDENCE_THRESHOLD = 0.75
 
+
 # Network files location
 # YOLO_WEIGHT = r"ImageProcessor/Network/plate_yolov4/backup/yolov4-obj_best.weights"
 # YOLO_CFG = r"ImageProcessor/Network/plate_yolov4/cfg/yolov4-obj.cfg"
-PLATE_DETECT_YOLO_TINY_WEIGHT = r"D:\Project\QuanLyGuiXe_Client\ImageProcessor\Network\plate_yolov4_tiny\backup\yolov4-tiny-obj_best.weights"
-PLATE_DETECT_YOLO_TINY_CFG = r"D:\Project\QuanLyGuiXe_Client\ImageProcessor\Network\plate_yolov4_tiny\cfg\yolov4-tiny-obj.cfg"
+PLATE_DETECT_YOLO_TINY_WEIGHT = file_path(r"Network\plate_yolov4_tiny\backup\yolov4-tiny-obj_best.weights")
+PLATE_DETECT_YOLO_TINY_CFG =  file_path(r"Network\plate_yolov4_tiny\cfg\yolov4-tiny-obj.cfg")
 
 # FIXME: path not exist after installed
 PLATE_DETECT_TINY_MODEL = cv2.dnn.readNet(PLATE_DETECT_YOLO_TINY_WEIGHT, PLATE_DETECT_YOLO_TINY_CFG)

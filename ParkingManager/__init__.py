@@ -106,18 +106,19 @@ class MainFrame(MyFrame):
         self.l2 = MyLabel(self.plate_cam_frame, text="Camera 2")
         self.l2.pack(side=TOP, anchor=NW)
 
-        self.img1 = PlateDetectWidget(master=self.plate_cam_frame,
+        self.cam2 = PlateDetectWidget(master=self.plate_cam_frame,
                                       img_out_widget=self.plate_detect_output_img,
                                       txt_out_widget=self.plate_textbox,
                                       img_height=self.CAMERA_HEIGHT)
         # FIXME: PlateProcess.py predicts this differently
-        img = img_from_url(r"https://raw.githubusercontent.com/White-Weasel/QuanLyGuiXe_img/master/img/xemay100.jpg")
-        self.img1.set_img(img, self.CAMERA_HEIGHT)
-        self.img1.pack(side=TOP)
+        img = img_from_url(r"https://raw.githubusercontent.com/White-Weasel/QuanLyGuiXe_img/master/img/xemay567.jpg")
+        self.cam2.set_img(img, self.CAMERA_HEIGHT)
+        self.cam2.pack(side=TOP)
 
         def random_plate_img():
+            # TODO: get img in new thread
             a = random.randint(0, 2000)
-            self.img1.set_img(img_from_url(
+            self.cam2.set_img(img_from_url(
                 rf"https://raw.githubusercontent.com/White-Weasel/QuanLyGuiXe_img/master/img/xemay{a}.jpg"),
                               self.CAMERA_HEIGHT)
 
@@ -208,11 +209,17 @@ class MainFrame(MyFrame):
     def toggle_auto(self):
         if self.auto_entry.get():
             self.cam1.output_widget = self.face_detect_ouput_img
+            self.cam2.img_out_widget = self.plate_detect_output_img
+
             self.plate_textbox.configure(state=DISABLED)
             self.snap_btn.configure(state=DISABLED)
         else:
             self.cam1.output_widget = None
+            self.cam2.img_out_widget = None
+
             self.face_detect_ouput_img.configure(image='')
+            self.plate_detect_output_img.configure(image='')
+
             self.plate_textbox.configure(state=NORMAL)
             self.snap_btn.configure(state=NORMAL)
 

@@ -1,3 +1,4 @@
+import os
 import urllib
 
 import cv2
@@ -96,3 +97,9 @@ def draw_bounding_boxes(img, boxes: list[BoundingBox], color=(50, 50, 255), *arg
     for b in boxes:
         cv2.rectangle(img, (b.x, b.y), (b.x + b.w, b.y + b.h), color, *args, **kwargs)
         cv2.putText(img, b.label, (b.x, b.y), cv2.FONT_HERSHEY_PLAIN, 2, color, 2)
+
+
+def file_path(r_path):
+    this_file = os.path.dirname(os.path.abspath(__file__))
+    path = os.path.join(this_file, r_path)
+    return path

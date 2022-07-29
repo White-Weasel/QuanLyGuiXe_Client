@@ -2,7 +2,7 @@ import cv2
 import numpy
 import numpy as np
 import imutils
-from ImageProcessor import absolute_size_from_relative_size, draw_boxes, BoundingBox, Plate
+from ImageProcessor import absolute_size_from_relative_size, draw_boxes, BoundingBox, Plate, file_path
 
 # Constants.
 INPUT_WIDTH = 256
@@ -14,8 +14,8 @@ CONFIDENCE_THRESHOLD = 0.75
 # Network files location
 # YOLO_WEIGHT = r"ImageProcessor/Network/plate_yolov4/backup/yolov4-obj_best.weights"
 # YOLO_CFG = r"ImageProcessor/Network/plate_yolov4/cfg/yolov4-obj.cfg"
-RECOGNISE_PLATE_YOLO_TINY_WEIGHT = r"D:\Project\QuanLyGuiXe_Client\ImageProcessor\Network\plate_ocr_yolov4_tiny\backup\yolov4-tiny-custom_final.weights"
-RECOGNISE_PLATE_YOLO_TINY_CFG = r"D:\Project\QuanLyGuiXe_Client\ImageProcessor\Network\plate_ocr_yolov4_tiny\cfg\yolov4-tiny-custom.cfg"
+RECOGNISE_PLATE_YOLO_TINY_WEIGHT = file_path(r"Network\plate_ocr_yolov4_tiny\backup\yolov4-tiny-custom_final.weights")
+RECOGNISE_PLATE_YOLO_TINY_CFG = file_path(r"Network\plate_ocr_yolov4_tiny\cfg\yolov4-tiny-custom.cfg")
 
 LABELS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I',
           'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
