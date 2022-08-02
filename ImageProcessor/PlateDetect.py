@@ -11,12 +11,11 @@ SCORE_THRESHOLD = 0.5
 NMS_THRESHOLD = 0.45
 CONFIDENCE_THRESHOLD = 0.75
 
-
 # Network files location
 # YOLO_WEIGHT = r"ImageProcessor/Network/plate_yolov4/backup/yolov4-obj_best.weights"
 # YOLO_CFG = r"ImageProcessor/Network/plate_yolov4/cfg/yolov4-obj.cfg"
 PLATE_DETECT_YOLO_TINY_WEIGHT = file_path(r"Network\plate_yolov4_tiny\backup\yolov4-tiny-obj_best.weights")
-PLATE_DETECT_YOLO_TINY_CFG =  file_path(r"Network\plate_yolov4_tiny\cfg\yolov4-tiny-obj.cfg")
+PLATE_DETECT_YOLO_TINY_CFG = file_path(r"Network\plate_yolov4_tiny\cfg\yolov4-tiny-obj.cfg")
 
 # FIXME: path not exist after installed
 PLATE_DETECT_TINY_MODEL = cv2.dnn.readNet(PLATE_DETECT_YOLO_TINY_WEIGHT, PLATE_DETECT_YOLO_TINY_CFG)
@@ -58,8 +57,8 @@ def post_process(img, detect_result, min_confidence: float = CONFIDENCE_THRESHOL
 def detectPlate(img, network=PLATE_DETECT_TINY_MODEL, min_confidence: float = 0.5, draw: bool = True):
     if network is None:
         network = PLATE_DETECT_TINY_MODEL
-    result = pre_process(img, network)
-    return post_process(img, result, min_confidence=min_confidence, draw=draw)
+    detect_result = pre_process(img, network)
+    return post_process(img, detect_result, min_confidence=min_confidence, draw=draw)
 
 
 if __name__ == '__main__':
