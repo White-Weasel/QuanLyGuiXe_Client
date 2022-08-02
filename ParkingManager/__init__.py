@@ -1,7 +1,5 @@
 import tkinter
 from functools import partial
-
-import utls.StopableThread
 from MyTkinter import *
 import random
 from ImageProcessor import img_from_url
@@ -48,6 +46,25 @@ class MainFrame(MyFrame):
         self.OUTPUT_HEIGHT = 100
         self.auto_entry = tk.BooleanVar()
 
+        menubar = Menu(master)
+        filemenu = Menu(menubar, tearoff=0)
+        filemenu.add_command(label="New", command=self.home)
+        filemenu.add_command(label="Open")
+        filemenu.add_command(label="Save")
+        filemenu.add_separator()
+        filemenu.add_command(label="Exit", command=master.quit)
+        menubar.add_cascade(label="File", menu=filemenu)
+
+        viewmenu = Menu(menubar, tearoff=0)
+        viewmenu.add_command(label="Debug mode", command=partial(self.toggle_debug))
+        menubar.add_cascade(label="View", menu=viewmenu)
+
+        master.config(menu=menubar)
+
+        self.tooptip_list = [f.toolTip for f in get_all_child_frames(self)]
+        master.after(0, self.home)
+
+    def home(self):
         """Frames initialize"""
         self.left_frame = MyFrame(self, name='cameras feed')
         self.left_frame.pack(fill=BOTH, expand=NO, side=LEFT)
@@ -120,7 +137,7 @@ class MainFrame(MyFrame):
             a = random.randint(0, 2000)
             self.cam2.set_img(img_from_url(
                 rf"https://raw.githubusercontent.com/White-Weasel/QuanLyGuiXe_img/master/img/xemay{a}.jpg"),
-                              self.CAMERA_HEIGHT)
+                self.CAMERA_HEIGHT)
 
         self.b1 = MyButton(self.plate_cam_frame, text='Next random img', height=2, command=partial(random_plate_img))
         self.b1.pack(side=BOTTOM)
@@ -160,25 +177,6 @@ class MainFrame(MyFrame):
                                        height=DEFAULT_BTN_HEIGHT, width=DEFAULT_BTN_WIDTH)
         self.close_gate_btn.pack(side=RIGHT, anchor=CENTER, padx=10)
 
-        menubar = Menu(master)
-        filemenu = Menu(menubar, tearoff=0)
-        filemenu.add_command(label="New", command=self.home)
-        filemenu.add_command(label="Open")
-        filemenu.add_command(label="Save")
-        filemenu.add_separator()
-        filemenu.add_command(label="Exit", command=master.quit)
-        menubar.add_cascade(label="File", menu=filemenu)
-
-        viewmenu = Menu(menubar, tearoff=0)
-        viewmenu.add_command(label="Debug mode", command=partial(self.toggle_debug))
-        menubar.add_cascade(label="View", menu=viewmenu)
-
-        master.config(menu=menubar)
-
-        self.tooptip_list = [CreateToolTip(f, self.widget_tooltips_content(f)) for f in get_all_child_frames(self)]
-        self.home()
-
-    def home(self):
         self.default_frame_color = []
         for f in get_all_child_frames(self):
             self.default_frame_color.append(f.cget("background"))
@@ -227,14 +225,6 @@ class MainFrame(MyFrame):
         self.stopAllThread()
 
         self.master.destroy()
-
-    @staticmethod
-    def widget_tooltips_content(frame: MyFrame):
-        """return all parent widgets names"""
-        result = frame.winfo_name()
-        for f in get_all_master_frames(frame):
-            result = f"{f.winfo_name()}\n" + result
-        return result
 
 
 if __name__ == '__main__':

@@ -2,9 +2,7 @@ import threading
 from tkinter import *
 import tkinter as tk
 from typing import Union
-
 import numpy
-
 import ImageProcessor.PlateDetect
 import ImageProcessor.PlateRecognition
 from ImageProcessor.FacialDetect import detectFace
@@ -70,6 +68,7 @@ class MyFrame(tk.Frame):
         self.frame_list = []
         self.canvas_list = []
         self.thread_list = []
+        self.toolTip = ToolTip(self, self.widget_tooltips_content())
         try:
             master.frame_list.append(self)
         except AttributeError:
@@ -79,6 +78,13 @@ class MyFrame(tk.Frame):
         for thread in getAllThread(self):
             thread.join()
             thread.stop()
+
+    def widget_tooltips_content(self):
+        """return all parent widgets names"""
+        result = self.winfo_name()
+        for f in get_all_master_frames(self):
+            result = f"{f.winfo_name()}\n" + result
+        return result
 
 
 class MyText(tk.Text):
@@ -124,60 +130,6 @@ class MyCanvas(tk.Canvas):
             master.canvas_list.append(self)
         except AttributeError:
             master.canvas_list = [self]
-
-
-class ToolTip(object):
-
-    def __init__(self, widget):
-        self.text = None
-        self.widget = widget
-        self.tipwindow = None
-        self.id = None
-        self.x = self.y = 0
-
-    def showtip(self, text):
-        """Display text in tooltip window"""
-        self.text = text
-        if self.tipwindow or not self.text:
-            return
-        x, y, cx, cy = self.widget.bbox("insert")
-        x = x + self.widget.winfo_rootx() + 57
-        y = y + cy + self.widget.winfo_rooty() + 27
-        self.tipwindow = tw = Toplevel(self.widget)
-        # noinspection PyTypeChecker
-        tw.wm_overrideredirect(1)
-        tw.wm_geometry("+%d+%d" % (x, y))
-        label = Label(tw, text=self.text, justify=LEFT,
-                      background="#ffffe0", relief=SOLID, borderwidth=1,
-                      font=("tahoma", "8", "normal"))
-        label.pack(ipadx=1)
-
-    def hidetip(self):
-        tw = self.tipwindow
-        self.tipwindow = None
-        if tw:
-            tw.destroy()
-
-
-def createToolTip(widget, text):
-    toolTip = ToolTip(widget)
-
-    # noinspection PyUnusedLocal
-    def enter(event):
-        toolTip.showtip(text)
-
-    # noinspection PyUnusedLocal
-    def leave(event):
-        toolTip.hidetip()
-
-    widget.bind('<Enter>', enter)
-    widget.bind('<Leave>', leave)
-
-
-def deleteToolTip(widget: tk.Widget):
-    """delete the help tool tip of a widget"""
-    widget.unbind('<Enter>')
-    widget.unbind('<Leave>')
 
 
 def photo_from_ndarray(img, height: int = None):
