@@ -9,6 +9,7 @@ DEFAULT_BTN_HEIGHT = 3
 DEFAULT_BTN_WIDTH = 15
 
 
+# TODO: click result img to choose which barcode/plate to use
 def random_rgb():
     r = random.randint(0, 250)
     g = random.randint(0, 250)
@@ -31,15 +32,15 @@ class MainFrame(MyFrame):
     def __init__(self, master: tk.Tk, *args, **kwargs):
         super().__init__(master, *args, **kwargs)
 
+        """Key event example"""
         def handle_keypress(event: tk.Event):
             if event.keycode == 27:
-                master.destroy()
+                self.on_closing()
 
         master.title("Quan ly gui tra xe")
         master.geometry('1000x700+250+30')
         master.bind("<Key>", handle_keypress)
-        # noinspection PyUnresolvedReferences
-        self.master.protocol('WM_DELETE_WINDOW', self.on_closing)
+        master.protocol('WM_DELETE_WINDOW', self.on_closing)
 
         self._debug = False
         self.CAMERA_HEIGHT = 250
@@ -62,20 +63,20 @@ class MainFrame(MyFrame):
         master.config(menu=menubar)
 
         self.tooptip_list = [f.toolTip for f in get_all_child_frames(self)]
-        master.after(0, self.home)
+        master.after(10, self.home)
 
     def home(self):
         """Frames initialize"""
         self.left_frame = MyFrame(self, name='cameras feed')
         self.left_frame.pack(fill=BOTH, expand=NO, side=LEFT)
 
-        self.face_cam_frame = MyFrame(self.left_frame, name='frame 1-1')
+        self.face_cam_frame = MyFrame(self.left_frame, name='face cam frame')
         self.face_cam_frame.pack(fill=BOTH, expand=1, side=TOP)
 
-        self.plate_cam_frame = MyFrame(self.left_frame, name='frame 1-2')
+        self.plate_cam_frame = MyFrame(self.left_frame, name='plate_cam_frame')
         self.plate_cam_frame.pack(fill=BOTH, expand=1, side=BOTTOM)
 
-        self.right_frame = MyFrame(self, name='frame 2')
+        self.right_frame = MyFrame(self, name='right_frame')
         self.right_frame.pack(fill=BOTH, expand=1, side=RIGHT, padx=50)
 
         self.entry_control_frame = MyFrame(self.right_frame, name='entry control')
@@ -91,22 +92,25 @@ class MainFrame(MyFrame):
         self.entry_control_btns_frame.pack(side=RIGHT, fill=BOTH, expand=YES)
 
         """Result frames"""
-        self.plate_recognise_result_frame = MyFrame(self.detect_result_frame, name='bien so')
-        self.plate_recognise_result_frame.pack(fill=BOTH, side=TOP)
-        self.l3 = MyLabel(self.plate_recognise_result_frame, text="Bien so: ")
-        self.l3.pack(side=LEFT)
-        self.plate_textbox = MyEntry(self.plate_recognise_result_frame, state=DISABLED, font='TkTextFont 16')
-        self.plate_textbox.pack(side=RIGHT, fill=X, expand=YES)
+        self.txt_result_frame = MyFrame(self.detect_result_frame, name='bien so')
+        self.txt_result_frame.pack(fill=X, side=TOP, pady=25)
 
-        self.face_detect_result_frame = MyFrame(self.detect_result_frame, name='khuon mat')
-        self.face_detect_result_frame.pack(fill=BOTH, pady=25, side=LEFT)
-        self.l4 = MyLabel(self.face_detect_result_frame, text="Khuon mat: ")
-        self.l4.pack(anchor=NW)
-        self.face_detect_ouput_img = ImageViewer(self.face_detect_result_frame, img_height=100)
-        self.face_detect_ouput_img.pack(anchor=NW)
+        # self.plate_num_result_frame = MyFrame(self.txt_result_frame, name='plate_num')
+        # self.plate_num_result_frame.pack(side=TOP, fill=X, expand=YES)
+        self.l3 = MyLabel(self.txt_result_frame, text="Bien so: ")
+        self.l3.grid(row=1, column=1)
+        self.plate_textbox = MyEntry(self.txt_result_frame, state=DISABLED, font='TkTextFont 16')
+        self.plate_textbox.grid(row=1, column=2)
+
+        # self.barcode_detect_result_frame = MyFrame(self.txt_result_frame, name='barcode')
+        # self.barcode_detect_result_frame.pack(fill=X, side=BOTTOM)
+        self.l4 = MyLabel(self.txt_result_frame, text="Ma ve: ")
+        self.l4.grid(row=2, column=1)
+        self.barcode_textbox = MyEntry(self.txt_result_frame, state=DISABLED, font='TkTextFont 16')
+        self.barcode_textbox.grid(row=2, column=2)
 
         self.plate_detect_result_frame = MyFrame(self.detect_result_frame, name='anh bien so')
-        self.plate_detect_result_frame.pack(fill=BOTH, pady=25, side=RIGHT)
+        self.plate_detect_result_frame.pack(fill=BOTH, pady=25, side=TOP)
         self.l5 = MyLabel(self.plate_detect_result_frame, text='Bien so: ')
         self.l5.pack(anchor=NW)
         self.plate_detect_output_img = ImageViewer(self.plate_detect_result_frame, img_height=100)
@@ -115,9 +119,10 @@ class MainFrame(MyFrame):
         """Cam frames widgets"""
         self.l1 = MyLabel(self.face_cam_frame, text="Camera 1")
         self.l1.pack(anchor=NW)
-        cap = cv2.VideoCapture(0)
-        self.cam1 = FaceDetectCam(master=self.face_cam_frame, cap=cap, img_height=self.CAMERA_HEIGHT,
-                                  output_widget=self.face_detect_ouput_img)
+        # default capture backend cause warning when closed. cv2.CAP_DSHOW backend does not
+        cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+        self.cam1 = BarcodeWidget(master=self.face_cam_frame, cap=cap, img_height=self.CAMERA_HEIGHT,
+                                  txt_out_widget=self.barcode_textbox)
         self.cam1.pack(anchor=CENTER)
 
         self.l2 = MyLabel(self.plate_cam_frame, text="Camera 2")
@@ -143,10 +148,10 @@ class MainFrame(MyFrame):
         self.b1.pack(side=BOTTOM)
 
         """Entry Control frame"""
+        # TODO: do smt with this btn
         self.snap_btn = MyButton(self.entry_control_btns_frame,
                                  text="Chup anh",
                                  height=3, width=15,
-                                 command=partial(self.cam1.output_frame_to_widget, self.face_detect_ouput_img),
                                  state=DISABLED)
         self.snap_btn.pack(side=TOP, pady=25)
         self.enter_btn = MyButton(self.entry_control_btns_frame, text='Gui xe',
@@ -206,7 +211,6 @@ class MainFrame(MyFrame):
 
     def toggle_auto(self):
         if self.auto_entry.get():
-            self.cam1.output_widget = self.face_detect_ouput_img
             self.cam2.img_out_widget = self.plate_detect_output_img
 
             self.plate_textbox.configure(state=DISABLED)
@@ -215,7 +219,6 @@ class MainFrame(MyFrame):
             self.cam1.output_widget = None
             self.cam2.img_out_widget = None
 
-            self.face_detect_ouput_img.configure(image='')
             self.plate_detect_output_img.configure(image='')
 
             self.plate_textbox.configure(state=NORMAL)
@@ -224,7 +227,9 @@ class MainFrame(MyFrame):
     def on_closing(self):
         self.stopAllThread()
 
-        self.master.destroy()
+        # FIXME: only the main thread can call to tkinter funtion. That's why the app can freeze here
+        #  The after(200) funtion is only a bandaid fix and can fail if stopAllThread take too long
+        self.master.after(200, self.master.destroy)
 
 
 if __name__ == '__main__':

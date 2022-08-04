@@ -4,3 +4,4 @@ numpy
 imutils
 mediapipe
 pyinstaller
+pyzbar

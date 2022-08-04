@@ -17,7 +17,6 @@ CONFIDENCE_THRESHOLD = 0.75
 PLATE_DETECT_YOLO_TINY_WEIGHT = file_path(r"Network\plate_yolov4_tiny\backup\yolov4-tiny-obj_best.weights")
 PLATE_DETECT_YOLO_TINY_CFG = file_path(r"Network\plate_yolov4_tiny\cfg\yolov4-tiny-obj.cfg")
 
-# FIXME: path not exist after installed
 PLATE_DETECT_TINY_MODEL = cv2.dnn.readNet(PLATE_DETECT_YOLO_TINY_WEIGHT, PLATE_DETECT_YOLO_TINY_CFG)
 
 

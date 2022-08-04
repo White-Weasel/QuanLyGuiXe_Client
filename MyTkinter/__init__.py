@@ -5,57 +5,13 @@ from typing import Union
 import numpy
 import ImageProcessor.PlateDetect
 import ImageProcessor.PlateRecognition
-from ImageProcessor.FacialDetect import detectFace
+import ImageProcessor.BarcodeReader
+# from ImageProcessor.FacialDetect import detectFace
 import cv2
 import imutils
 from PIL import Image, ImageTk
 
-
-def from_rgb(rgb):
-    """translates a rgb tuple of int to a tkinter friendly color code
-    """
-    r, g, b = rgb
-    return f'#{r:02x}{g:02x}{b:02x}'
-
-
-def get_all_child_frames(frame):
-    if frame is not None and frame is not list:
-        result = frame.frame_list
-        if len(result) > 0:
-            for f in frame.frame_list:
-                result += get_all_child_frames(f)
-        return result
-
-
-def get_all_master_frames(frame):
-    result = []
-    parent = frame.master
-    while parent is not None:
-        result.append(parent)
-        parent = parent.master
-    return result
-
-
-def getAllThread(frame):
-    if hasattr(frame, 'thread_list'):
-        result = frame.thread_list
-        if len(result) > 0:
-            for f in frame.thread_list:
-                result += getAllThread(f)
-        return result
-    else:
-        return []
-
-
-def img_crop(img: numpy.ndarray, crop_area):
-    (x, y, w, h) = crop_area
-    x1 = x + w
-    y1 = y + h
-    if x < 0:
-        x = 0
-    if y < 0:
-        y = 0
-    return img[y:y1, x:x1]
+from ImageProcessor import img_crop
 
 
 class MyFrame(tk.Frame):
@@ -65,7 +21,7 @@ class MyFrame(tk.Frame):
         self.label_list = []
         self.button_list = []
         self.text_list = []
-        self.frame_list = []
+        self.frame_list: list[MyFrame] = []
         self.canvas_list = []
         self.thread_list = []
         self.toolTip = ToolTip(self, self.widget_tooltips_content())
@@ -75,9 +31,14 @@ class MyFrame(tk.Frame):
             master.frame_list = [self]
 
     def stopAllThread(self):
-        for thread in getAllThread(self):
-            thread.join()
-            thread.stop()
+        # TODO: It would be sensible to use join here but only main thread can call to tkinter funtions,
+        #   so t.join() here will make the program freeze because the thread do call to those tkinter function.
+        #   A potential fix would be to remove all tkinter funtion call in other threads and use after()
+        #   in main thread to fetch and process data from other threads
+        for f in get_all_child_frames(self):
+            for t in f.thread_list:
+                t.stop()
+                print(f"stoped {t}")
 
     def widget_tooltips_content(self):
         """return all parent widgets names"""
@@ -146,7 +107,7 @@ def setLabelImg(label: tk.Label, img):
     label.configure(image=img)
 
 
-def print_to_tet_widget(widget: Union[MyText, MyEntry], text):
+def print_to_text_widget(widget: Union[MyText, MyEntry], text):
     """print to a disabled text widget"""
     if widget['state'] == DISABLED:
         widget.config(state=NORMAL)
@@ -163,7 +124,7 @@ class VideoFeed(tk.Label):
     """REMEMBER to stop it with the program"""
 
     def __init__(self, master: MyFrame, cap: cv2.VideoCapture, img_height: int = 250, *args, **kwargs):
-        super(VideoFeed, self).__init__(master, *args, **kwargs)
+        super().__init__(master, *args, **kwargs)
         self.imgtk = None
         try:
             master.thread_list.append(self)
@@ -172,12 +133,12 @@ class VideoFeed(tk.Label):
 
         self.cap = cap
         self.img_height = img_height
-        self._stop_lock = False
+        self.stop_lock = False
         self.thread = threading.Thread(target=self.showFrame)
         self.thread.start()
 
     def showFrame(self):
-        if not self._stop_lock:
+        """if not self.stop_lock:
             succ, frame = self.cap.read()
             if succ:
                 imgtk = photo_from_ndarray(frame, self.img_height)
@@ -185,56 +146,57 @@ class VideoFeed(tk.Label):
 
                 self.after(20, self.showFrame)
         else:
-            self.cap.release()
+            self.cap.release()"""
+        return
 
     def stop(self):
-        self._stop_lock = True
+        self.stop_lock = True
 
     def join(self):
         self.thread.join()
 
 
-class FaceDetectCam(VideoFeed):
-    def __init__(self, min_confidence: float = 0.5,
-                 output_widget: tk.Label = None,
-                 output_height: int = 100,
-                 *args, **kwargs):
-        super(FaceDetectCam, self).__init__(*args, **kwargs)
-
-        self.detect_result = None
-        self.frame = None
-        self.min_confidence = min_confidence
-        self.output_widget = output_widget
-        self.output_height = output_height
-
-    def output_frame_to_widget(self, widget):
-        if len(self.detect_result) > 0:
-            face_img = img_crop(self.frame, self.detect_result[0])
-            face_img = photo_from_ndarray(face_img, self.output_height)
-            setLabelImg(widget, face_img)
-
-    def showFrame(self):
-        if not self._stop_lock:
-            success, self.frame = self.cap.read()
-
-            if success:
-                """remove this later"""
-                self.frame = cv2.flip(self.frame, 1)
-
-                # TODO: potential bug here, frame and detect_result should be in local scope to prevent old result
-                #  being used
-                self.detect_result = detectFace(self.frame, draw=True)
-
-                imgtk = photo_from_ndarray(self.frame, self.img_height)
-                setLabelImg(self, imgtk)
-                if self.output_widget is not None:
-                    if len(self.detect_result) > 0:
-                        self.output_frame_to_widget(self.output_widget)
-                    else:
-                        self.output_widget.configure(image='')
-                self.after(20, self.showFrame)
-        else:
-            self.cap.release()
+# class FaceDetectCam(VideoFeed):
+#     def __init__(self, min_confidence: float = 0.5,
+#                  output_widget: tk.Label = None,
+#                  output_height: int = 100,
+#                  *args, **kwargs):
+#         super(FaceDetectCam, self).__init__(*args, **kwargs)
+#
+#         self.detect_result = None
+#         self.frame = None
+#         self.min_confidence = min_confidence
+#         self.output_widget = output_widget
+#         self.output_height = output_height
+#
+#     def output_frame_to_widget(self, widget):
+#         if len(self.detect_result) > 0:
+#             face_img = img_crop(self.frame, self.detect_result[0])
+#             face_img = photo_from_ndarray(face_img, self.output_height)
+#             setLabelImg(widget, face_img)
+#
+#     def showFrame(self):
+#         if not self.stop_lock:
+#             success, self.frame = self.cap.read()
+#
+#             if success:
+#                 """remove this later"""
+#                 self.frame = cv2.flip(self.frame, 1)
+#
+#                 # TODO: potential bug here, frame and detect_result should be in local scope to prevent old result
+#                 #  being used
+#                 self.detect_result = detectFace(self.frame, draw=True)
+#
+#                 imgtk = photo_from_ndarray(self.frame, self.img_height)
+#                 setLabelImg(self, imgtk)
+#                 if self.output_widget is not None:
+#                     if len(self.detect_result) > 0:
+#                         self.output_frame_to_widget(self.output_widget)
+#                     else:
+#                         self.output_widget.configure(image='')
+#                 self.after(20, self.showFrame)
+#         else:
+#             self.cap.release()
 
 
 class ImageViewer(tk.Label):
@@ -293,7 +255,89 @@ class PlateDetectWidget(ImageViewer):
         for b in recognise_result:
             plate += b.label
         if self.txt_out_widget is not None:
-            print_to_tet_widget(self.txt_out_widget, plate)
+            print_to_text_widget(self.txt_out_widget, plate)
+
+
+class BarcodeWidget(VideoFeed):
+    def __init__(self, txt_out_widget: Union[MyText, MyEntry] = None, *args, **kwargs):
+        self.barcodes: list[ImageProcessor.BarcodeReader.Barcode] = []
+        self.txt_out_widget = txt_out_widget
+        super().__init__(*args, **kwargs)
+        self.stop_lock = False
+
+    # noinspection PyAttributeOutsideInit
+    """def showFrame(self):
+        if self.stop_lock:
+            # FIXME: code doesnt go in here even if stop lock is true
+            self.cap.release()
+            print('closed cap')
+        else:
+            succ, self.frame = self.cap.read()
+            if succ:
+                self.frame = cv2.flip(self.frame, 1)
+
+                self.barcodes = ImageProcessor.BarcodeReader.readBarcode(self.frame)
+
+                if len(self.barcodes) > 0:
+                    if self.txt_out_widget is not None:
+                        barcode = self.barcodes[0].info
+                        print_to_text_widget(self.txt_out_widget, barcode)
+
+                imgtk = photo_from_ndarray(self.frame, self.img_height)
+                setLabelImg(self, imgtk)
+                self.after(20, self.showFrame)"""
+
+    # noinspection PyAttributeOutsideInit
+    def showFrame(self):
+        while not self.stop_lock:
+            succ, self.frame = self.cap.read()
+            if succ:
+                self.frame = cv2.flip(self.frame, 1)
+
+                self.barcodes = ImageProcessor.BarcodeReader.readBarcode(self.frame)
+
+                if len(self.barcodes) > 0:
+                    if self.txt_out_widget is not None:
+                        barcode = self.barcodes[0].info
+                        print_to_text_widget(self.txt_out_widget, barcode)
+
+                imgtk = photo_from_ndarray(self.frame, self.img_height)
+                setLabelImg(self, imgtk)
+        else:
+            print_to_text_widget(self.txt_out_widget, 'closing')
+            self.cap.release()
+            return
+
+
+def from_rgb(rgb):
+    """translates a rgb tuple of int to a tkinter friendly color code
+    """
+    r, g, b = rgb
+    return f'#{r:02x}{g:02x}{b:02x}'
+
+
+def get_all_child_frames(frame: MyFrame) -> list[MyFrame]:
+    result = [frame]
+    for f in frame.frame_list:
+        result += get_all_child_frames(f)
+    return result
+
+
+def get_all_master_frames(frame: MyFrame) -> Union[list[MyFrame], list]:
+    result = []
+    parent = frame.master
+    while parent is not None:
+        result.append(parent)
+        parent = parent.master
+    return result
+
+
+def getAllThread(frame: MyFrame):
+    result = []
+    for f in get_all_child_frames(frame):
+        if len(f.thread_list) > 0:
+            result += f.thread_list
+    return result
 
 
 from .ToolTips import *

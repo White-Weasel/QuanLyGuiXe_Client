@@ -103,6 +103,7 @@ def img_crop(img: numpy.ndarray, crop_area):
         y = 0
     return img[y:y1, x:x1]
 
+
 def draw_bounding_boxes(img, boxes: list[BoundingBox], color=(50, 50, 255), *args, **kwargs):
     for b in boxes:
         cv2.rectangle(img, (b.x, b.y), (b.x + b.w, b.y + b.h), color, *args, **kwargs)
