@@ -93,6 +93,16 @@ def draw_boxes(img, boxes, *args, **kwargs):
             cv2.putText(img, label, (x, y), cv2.FONT_HERSHEY_PLAIN, 2, (50, 50, 255), 2)
 
 
+def img_crop(img: numpy.ndarray, crop_area):
+    (x, y, w, h) = crop_area
+    x1 = x + w
+    y1 = y + h
+    if x < 0:
+        x = 0
+    if y < 0:
+        y = 0
+    return img[y:y1, x:x1]
+
 def draw_bounding_boxes(img, boxes: list[BoundingBox], color=(50, 50, 255), *args, **kwargs):
     for b in boxes:
         cv2.rectangle(img, (b.x, b.y), (b.x + b.w, b.y + b.h), color, *args, **kwargs)
