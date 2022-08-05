@@ -15,7 +15,7 @@
 -->
 ## Cài đặt:
 
-* Tải và chạy file [Parking.Manager.Portable.exe](https://github.com/White-Weasel/QuanLyGuiXe_Client/releases/download/v0.01-beta/Parking.Manager.Portable.exe) từ trang [Releases](https://github.com/White-Weasel/QuanLyGuiXe_Client/releases)
+* Tải và chạy [file thực thi .exe](https://github.com/White-Weasel/QuanLyGuiXe_Client/releases/download/v0.02-beta/Quan_Ly_Do_Xe.exe) từ trang [Releases](https://github.com/White-Weasel/QuanLyGuiXe_Client/releases)
 
 ## Set up project
 
