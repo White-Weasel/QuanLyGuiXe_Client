@@ -3,6 +3,7 @@ from functools import partial
 from MyTkinter import *
 import random
 from ImageProcessor import img_from_url
+import requests
 
 COLORS = ["red", "orange", "yellow", "green", "blue", "violet", "black", ]
 DEFAULT_BTN_HEIGHT = 3
@@ -170,16 +171,26 @@ class MainFrame(MyFrame):
         self.gate_status_frame.pack(expand=YES, side=TOP, anchor=N)
         self.gate_label = MyLabel(self.gate_status_frame, text="Trang thai cong: ")
         self.gate_label.pack(side=LEFT)
-        self.gate_status_label = MyLabel(self.gate_status_frame, text="DONG", foreground='red', font=('Courier', 26))
+        self.gate_status_label = GateStatusWidget(self.gate_status_frame,
+                                                  text="",
+                                                  foreground='red',
+                                                  font=('Courier', 26),
+                                                  backend_url='127.0.0.1:8000')
         self.gate_status_label.pack(side=RIGHT, padx=20)
+
+        def gate_control(action: str):
+            data = {'action': action}
+            requests.post('http://127.0.0.1:8000/gate_control', json=data)
 
         self.gate_control_btn_frame = MyFrame(self.gate_control_frame, name='gate control btn')
         self.gate_control_btn_frame.pack(fill=Y, side=TOP, expand=YES, anchor=N)
-        self.open_gate_btn = MyButton(self.gate_control_btn_frame, text='Dong cong',
-                                      height=DEFAULT_BTN_HEIGHT, width=DEFAULT_BTN_WIDTH)
+        self.open_gate_btn = MyButton(self.gate_control_btn_frame, text='Mo cong',
+                                      height=DEFAULT_BTN_HEIGHT, width=DEFAULT_BTN_WIDTH,
+                                      command=partial(gate_control, 'open'))
         self.open_gate_btn.pack(side=LEFT, anchor=CENTER, padx=10)
-        self.close_gate_btn = MyButton(self.gate_control_btn_frame, text='Mo cong',
-                                       height=DEFAULT_BTN_HEIGHT, width=DEFAULT_BTN_WIDTH)
+        self.close_gate_btn = MyButton(self.gate_control_btn_frame, text='Dong cong',
+                                       height=DEFAULT_BTN_HEIGHT, width=DEFAULT_BTN_WIDTH,
+                                       command=partial(gate_control, 'close'))
         self.close_gate_btn.pack(side=RIGHT, anchor=CENTER, padx=10)
 
         self.default_frame_color = []

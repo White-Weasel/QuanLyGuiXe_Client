@@ -4,4 +4,6 @@ numpy
 imutils
 mediapipe
 pyinstaller
-pyzbar
+websocket-client
+requests
+

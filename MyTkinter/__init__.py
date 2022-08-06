@@ -1,3 +1,4 @@
+import json
 import threading
 from tkinter import *
 import tkinter as tk
@@ -10,7 +11,8 @@ import ImageProcessor.BarcodeReader
 import cv2
 import imutils
 from PIL import Image, ImageTk
-
+import websocket
+from websocket import create_connection
 from ImageProcessor import img_crop
 
 
@@ -67,8 +69,8 @@ class MyEntry(tk.Entry):
 
 
 class MyLabel(tk.Label):
-    def __init__(self, master, **kwargs):
-        super().__init__(master, **kwargs)
+    def __init__(self, master: MyFrame, *args, **kwargs):
+        super().__init__(master, *args, **kwargs)
         try:
             master.label_list.append(self)
         except AttributeError:
@@ -120,11 +122,12 @@ def print_to_text_widget(widget: Union[MyText, MyEntry], text):
     return
 
 
-class VideoFeed(tk.Label):
+class VideoFeed(MyLabel):
+    """Wisget to show webcam video"""
     """REMEMBER to stop it with the program"""
 
     def __init__(self, master: MyFrame, cap: cv2.VideoCapture, img_height: int = 250, *args, **kwargs):
-        super().__init__(master, *args, **kwargs)
+        super(VideoFeed, self).__init__(master=master, *args, **kwargs)
         self.imgtk = None
         try:
             master.thread_list.append(self)
@@ -200,6 +203,8 @@ class VideoFeed(tk.Label):
 
 
 class ImageViewer(tk.Label):
+    """Wisget to show a statis image"""
+
     def __init__(self, master,
                  cv2_img: numpy.ndarray = None,
                  img_height: int = 100,
@@ -259,10 +264,12 @@ class PlateDetectWidget(ImageViewer):
 
 
 class BarcodeWidget(VideoFeed):
+    """Wisget to read barcode from webcam"""
+
     def __init__(self, txt_out_widget: Union[MyText, MyEntry] = None, *args, **kwargs):
         self.barcodes: list[ImageProcessor.BarcodeReader.Barcode] = []
         self.txt_out_widget = txt_out_widget
-        super().__init__(*args, **kwargs)
+        super(BarcodeWidget, self).__init__(*args, **kwargs)
         self.stop_lock = False
 
     # noinspection PyAttributeOutsideInit
@@ -307,6 +314,46 @@ class BarcodeWidget(VideoFeed):
             print_to_text_widget(self.txt_out_widget, 'closing')
             self.cap.release()
             return
+
+
+class GateStatusWidget(MyLabel):
+    """Widget with a websocket to show gate status"""
+
+    def __init__(self, master:MyFrame, backend_url: str, *args, **kwargs):
+        super(GateStatusWidget, self).__init__(master, *args, **kwargs)
+        self.backend_url = backend_url
+        master.thread_list.append(self)
+        self.thread = threading.Thread(target=self.post_init)
+        self.thread.start()
+
+    # noinspection PyAttributeOutsideInit
+    def post_init(self):
+        self.websocket = websocket.WebSocketApp(f"ws://{self.backend_url}/gate_status",
+                                                on_message=self.on_message,
+                                                on_open=self.on_open,
+                                                on_error=self.on_error)
+        self.websocket.run_forever()
+
+    def on_message(self, ws, message):
+        try:
+            data = json.loads(message)
+            if data['gate_status']:
+                gate_status = 'Mo'
+            else:
+                gate_status = 'dong'
+            self.config(text=gate_status)
+        except KeyError:
+            pass
+
+    def on_open(self, ws):
+        print("opening websocket")
+        self.websocket.send('status')
+
+    def on_error(self, ws, error):
+        print(error)
+
+    def stop(self):
+        self.websocket.close()
 
 
 def from_rgb(rgb):
