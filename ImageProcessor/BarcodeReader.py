@@ -16,7 +16,13 @@ class Barcode:
         return f"{self.info} at {self.box}"
 
 
-def readBarcode(img):
+def readBarcode(img: numpy.ndarray) -> list[Barcode]:
+    """
+    Read barcode from image
+
+    :param img: input image
+    :return: list of barcodes read from image
+    """
     ok, decoded_info, decoded_type, corners = BARDET.detectAndDecode(img)
     result = []
     if ok:
@@ -34,11 +40,13 @@ def readBarcode(img):
     return result
 
 
-def barcode_info_postprocess(info: tuple):
-    return [x for x in info if x != '']
+def corners_to_rectangle(coners: numpy.ndarray) -> tuple:
+    """
+    Turn coordinate of 4 corners into (x, y, w, h)
 
-
-def corners_to_rectangle(coners: numpy.ndarray):
+    :param coners: an array of 4 coordinates
+    :return:
+    """
     x = int(numpy.amin(coners[:, 0]))
     y = int(numpy.amin(coners[:, 1]))
     w = int(numpy.amax(coners[:, 0]) - x)

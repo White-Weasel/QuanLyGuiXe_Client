@@ -3,12 +3,18 @@ import urllib
 
 import cv2
 import random
+
+import imutils
 import numpy
 
 
 class BoundingBox:
     def __init__(self, box, label):
         (self.x, self.y, self.w, self.h) = box
+        """self.x = int(x)
+        self.y = int(y)
+        self.w = int(w)
+        self.h = int(h)"""
         self.label = label
 
     def __gt__(self, other: 'BoundingBox'):
@@ -24,6 +30,11 @@ class BoundingBox:
     def box(self):
         box = (self.x, self.y, self.w, self.h)
         return box
+
+    def draw(self, img: numpy.ndarray, color=(50, 50, 255), *args, **kwargs):
+        a_boxes = absolute_size_from_relative_size([self.box, ], img.shape[:2])[0]
+        draw_boxes(img, [a_boxes, ], color, *args, **kwargs)
+        cv2.putText(img, self.label, (a_boxes[0], a_boxes[1]), cv2.FONT_HERSHEY_PLAIN, 2, color, 2)
 
 
 class Plate:
@@ -93,7 +104,7 @@ def draw_boxes(img, boxes, *args, **kwargs):
             cv2.putText(img, label, (x, y), cv2.FONT_HERSHEY_PLAIN, 2, (50, 50, 255), 2)
 
 
-def img_crop(img: numpy.ndarray, crop_area):
+def img_crop(img: numpy.ndarray, crop_area) -> numpy.ndarray:
     (x, y, w, h) = crop_area
     x1 = x + w
     y1 = y + h
@@ -104,10 +115,54 @@ def img_crop(img: numpy.ndarray, crop_area):
     return img[y:y1, x:x1]
 
 
-def draw_bounding_boxes(img, boxes: list[BoundingBox], color=(50, 50, 255), *args, **kwargs):
+def draw_bounding_boxes(img: numpy.ndarray, boxes: list[BoundingBox], color=(50, 50, 255), *args, **kwargs):
     for b in boxes:
-        cv2.rectangle(img, (b.x, b.y), (b.x + b.w, b.y + b.h), color, *args, **kwargs)
-        cv2.putText(img, b.label, (b.x, b.y), cv2.FONT_HERSHEY_PLAIN, 2, color, 2)
+        b.draw(img, color, *args, **kwargs)
+
+
+def apply_brightness_contrast(input_img, brightness=0, contrast=0):
+    if brightness != 0:
+        if brightness > 0:
+            shadow = brightness
+            highlight = 255
+        else:
+            shadow = 0
+            highlight = 255 + brightness
+        alpha_b = (highlight - shadow) / 255
+        gamma_b = shadow
+
+        buf = cv2.addWeighted(input_img, alpha_b, input_img, 0, gamma_b)
+    else:
+        buf = input_img.copy()
+
+    if contrast != 0:
+        f = 131 * (contrast + 127) / (127 * (131 - contrast))
+        alpha_c = f
+        gamma_c = 127 * (1 - f)
+
+        buf = cv2.addWeighted(buf, alpha_c, buf, 0, gamma_c)
+
+    return buf
+
+
+def odd_paercent(in_int: int, percent: float):
+    result = int(in_int * percent)
+    if result % 2 == 0:
+        result += 1
+    return result
+
+
+def gray_upscale(in_img: numpy.ndarray, height: int, blur_percent: float = 0.03):
+    in_img = cv2.cvtColor(in_img, cv2.COLOR_RGB2GRAY)
+    in_img = cv2.cvtColor(in_img, cv2.COLOR_GRAY2RGB)
+
+    in_img = imutils.resize(in_img, height=height)
+
+    blur_size = odd_paercent(height, blur_percent)
+    in_img = cv2.GaussianBlur(in_img, (blur_size, blur_size), 0)
+    in_img = apply_brightness_contrast(in_img, -20, 50)
+
+    return in_img
 
 
 def file_path(r_path):

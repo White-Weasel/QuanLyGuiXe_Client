@@ -1,9 +1,7 @@
-opencv-python
+opencv-python==4.5.5.64
+opencv-contrib-python==4.5.5.64
 Pillow
 numpy
 imutils
-mediapipe
-pyinstaller
 websocket-client
 requests
-

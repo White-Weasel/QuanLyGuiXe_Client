@@ -1,3 +1,4 @@
+import datetime
 import tkinter
 from functools import partial
 from MyTkinter import *
@@ -8,6 +9,7 @@ import requests
 COLORS = ["red", "orange", "yellow", "green", "blue", "violet", "black", ]
 DEFAULT_BTN_HEIGHT = 3
 DEFAULT_BTN_WIDTH = 15
+BACKEND_URL = '127.0.0.1:8000'
 
 
 # TODO: click result img to choose which barcode/plate to use
@@ -34,6 +36,7 @@ class MainFrame(MyFrame):
         super().__init__(master, *args, **kwargs)
 
         """Key event example"""
+
         def handle_keypress(event: tk.Event):
             if event.keycode == 27:
                 self.on_closing()
@@ -64,6 +67,7 @@ class MainFrame(MyFrame):
         master.config(menu=menubar)
 
         self.tooptip_list = [f.toolTip for f in get_all_child_frames(self)]
+        random.seed(datetime.datetime.now().timestamp())
         master.after(10, self.home)
 
     def home(self):
@@ -133,19 +137,24 @@ class MainFrame(MyFrame):
                                       img_out_widget=self.plate_detect_output_img,
                                       txt_out_widget=self.plate_textbox,
                                       img_height=self.CAMERA_HEIGHT)
-        # FIXME: PlateProcess.py predicts this differently
-        img = img_from_url(r"https://raw.githubusercontent.com/White-Weasel/QuanLyGuiXe_img/master/img/xemay567.jpg")
-        self.cam2.set_img(img, self.CAMERA_HEIGHT)
-        self.cam2.pack(side=TOP)
 
-        def random_plate_img():
+        # FIXME: PlateProcess.py predicts this differently
+        def set_random_plate_img(i: int = None):
             # TODO: get img in new thread
-            a = random.randint(0, 2000)
+            if i is None:
+                a = random.randint(0, 2000)
+            else:
+                a = i
             self.cam2.set_img(img_from_url(
                 rf"https://raw.githubusercontent.com/White-Weasel/QuanLyGuiXe_img/master/img/xemay{a}.jpg"),
                 self.CAMERA_HEIGHT)
+            print(f'random img {a}')
 
-        self.b1 = MyButton(self.plate_cam_frame, text='Next random img', height=2, command=partial(random_plate_img))
+        set_random_plate_img(567)
+        self.cam2.pack(side=TOP)
+
+        self.b1 = MyButton(self.plate_cam_frame, text='Next random img', height=2,
+                           command=partial(set_random_plate_img))
         self.b1.pack(side=BOTTOM)
 
         """Entry Control frame"""
@@ -155,8 +164,18 @@ class MainFrame(MyFrame):
                                  height=3, width=15,
                                  state=DISABLED)
         self.snap_btn.pack(side=TOP, pady=25)
+
+        def vehicle_entry():
+            data = self.parking_info('in')
+            result = requests.post(f"http://{BACKEND_URL}/parking", json=data)
+            if result.status_code % 100 == 2:
+                return result.json()
+            else:
+                print(result.content)
+
         self.enter_btn = MyButton(self.entry_control_btns_frame, text='Gui xe',
-                                  height=DEFAULT_BTN_HEIGHT, width=DEFAULT_BTN_WIDTH)
+                                  height=DEFAULT_BTN_HEIGHT, width=DEFAULT_BTN_WIDTH,
+                                  command=vehicle_entry)
         self.enter_btn.pack(side=TOP, pady=25)
         self.auto_checkbox = tk.Checkbutton(self.entry_control_btns_frame,
                                             text="Tu dong gui",
@@ -175,7 +194,7 @@ class MainFrame(MyFrame):
                                                   text="",
                                                   foreground='red',
                                                   font=('Courier', 26),
-                                                  backend_url='127.0.0.1:8000')
+                                                  backend_url=BACKEND_URL)
         self.gate_status_label.pack(side=RIGHT, padx=20)
 
         def gate_control(action: str):
@@ -197,6 +216,15 @@ class MainFrame(MyFrame):
         for f in get_all_child_frames(self):
             self.default_frame_color.append(f.cget("background"))
         self.pack(fill=BOTH, expand=YES, padx=25, pady=25)
+
+    def parking_info(self, action: str):
+        # the text in plate textbox is formated, so we use the unformated one in cam2
+        plate = self.cam2.plate_txt
+        try:
+            ticket = int(self.barcode_textbox.get())
+        except ValueError:
+            ticket = None
+        return {'plate': plate, 'ticket': ticket, 'action': action}
 
     def snapshot(self):
         self.plate_textbox.insert(INSERT, 'abc')
@@ -225,6 +253,7 @@ class MainFrame(MyFrame):
             self.cam2.img_out_widget = self.plate_detect_output_img
 
             self.plate_textbox.configure(state=DISABLED)
+            self.barcode_textbox.configure(state=DISABLED)
             self.snap_btn.configure(state=DISABLED)
         else:
             self.cam1.output_widget = None
@@ -233,6 +262,7 @@ class MainFrame(MyFrame):
             self.plate_detect_output_img.configure(image='')
 
             self.plate_textbox.configure(state=NORMAL)
+            self.barcode_textbox.configure(state=NORMAL)
             self.snap_btn.configure(state=NORMAL)
 
     def on_closing(self):

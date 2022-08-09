@@ -17,6 +17,10 @@ from ImageProcessor import img_crop
 
 
 class MyFrame(tk.Frame):
+    """
+    A frame that hold lists of its child
+    """
+
     def __init__(self, master, *args, **kwargs):
         super().__init__(master, *args, **kwargs)
         self.entry_list = []
@@ -33,6 +37,9 @@ class MyFrame(tk.Frame):
             master.frame_list = [self]
 
     def stopAllThread(self):
+        """
+        Stop all thread in this frame and all of its child
+        """
         # TODO: It would be sensible to use join here but only main thread can call to tkinter funtions,
         #   so t.join() here will make the program freeze because the thread do call to those tkinter function.
         #   A potential fix would be to remove all tkinter funtion call in other threads and use after()
@@ -96,6 +103,7 @@ class MyCanvas(tk.Canvas):
 
 
 def photo_from_ndarray(img, height: int = None):
+    """Turn a cv2 image in numpy.ndarray format into a format that tkinter can use"""
     img = imutils.resize(img, height=height)
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     img = Image.fromarray(img)
@@ -123,8 +131,10 @@ def print_to_text_widget(widget: Union[MyText, MyEntry], text):
 
 
 class VideoFeed(MyLabel):
-    """Wisget to show webcam video"""
-    """REMEMBER to stop it with the program"""
+    """
+    Widget to show webcam video\n
+    REMEMBER TO STOP IT
+    """
 
     def __init__(self, master: MyFrame, cap: cv2.VideoCapture, img_height: int = 250, *args, **kwargs):
         super(VideoFeed, self).__init__(master=master, *args, **kwargs)
@@ -141,6 +151,12 @@ class VideoFeed(MyLabel):
         self.thread.start()
 
     def showFrame(self):
+        """
+        This function will be running on another thread. If you overide it,
+        code it so setting self.stop_lock as True will stop it properly.
+        BEWARE that tkinter functions WILL run in the MAIN THREAD so joining this thread may cause freezing.
+        :return:
+        """
         """if not self.stop_lock:
             succ, frame = self.cap.read()
             if succ:
@@ -159,51 +175,8 @@ class VideoFeed(MyLabel):
         self.thread.join()
 
 
-# class FaceDetectCam(VideoFeed):
-#     def __init__(self, min_confidence: float = 0.5,
-#                  output_widget: tk.Label = None,
-#                  output_height: int = 100,
-#                  *args, **kwargs):
-#         super(FaceDetectCam, self).__init__(*args, **kwargs)
-#
-#         self.detect_result = None
-#         self.frame = None
-#         self.min_confidence = min_confidence
-#         self.output_widget = output_widget
-#         self.output_height = output_height
-#
-#     def output_frame_to_widget(self, widget):
-#         if len(self.detect_result) > 0:
-#             face_img = img_crop(self.frame, self.detect_result[0])
-#             face_img = photo_from_ndarray(face_img, self.output_height)
-#             setLabelImg(widget, face_img)
-#
-#     def showFrame(self):
-#         if not self.stop_lock:
-#             success, self.frame = self.cap.read()
-#
-#             if success:
-#                 """remove this later"""
-#                 self.frame = cv2.flip(self.frame, 1)
-#
-#                 # TODO: potential bug here, frame and detect_result should be in local scope to prevent old result
-#                 #  being used
-#                 self.detect_result = detectFace(self.frame, draw=True)
-#
-#                 imgtk = photo_from_ndarray(self.frame, self.img_height)
-#                 setLabelImg(self, imgtk)
-#                 if self.output_widget is not None:
-#                     if len(self.detect_result) > 0:
-#                         self.output_frame_to_widget(self.output_widget)
-#                     else:
-#                         self.output_widget.configure(image='')
-#                 self.after(20, self.showFrame)
-#         else:
-#             self.cap.release()
-
-
 class ImageViewer(tk.Label):
-    """Wisget to show a statis image"""
+    """Widget to show a statis image"""
 
     def __init__(self, master,
                  cv2_img: numpy.ndarray = None,
@@ -231,18 +204,34 @@ class ImageViewer(tk.Label):
 
 
 class PlateDetectWidget(ImageViewer):
-    def __init__(self, network=ImageProcessor.PlateDetect.PLATE_DETECT_TINY_MODEL,
+    """
+    A widget that show a static image, detect plate in it and show detect result on other widgets.
+    """
+    def __init__(self,
+                 detect_network=ImageProcessor.PlateDetect.PLATE_DETECT_TINY_MODEL,
+                 recognise_network=ImageProcessor.PlateRecognition.RECOGNISE_PLATE_TINY_MODEL,
                  min_confidence: float = 0.5,
                  img_out_widget: ImageViewer = None,
                  output_height: int = 100,
                  txt_out_widget: Union[MyText, MyEntry] = None,
                  *args, **kwargs):
+        """
+
+        :param recognise_network: Deep learning network used to recognise plate
+        :param detect_network: Deep learning network used to detect plate
+        :param min_confidence:
+        :param img_out_widget: widget to show cropped image of plate
+        :param output_height: the height that the cropped image will be resized to
+        :param txt_out_widget: widget to print plate text to
+        """
         super().__init__(*args, **kwargs)
-        self.network = network
+        self.recognise_network = recognise_network
+        self.detect_network = detect_network
         self.min_confidence = min_confidence
         self.img_out_widget = img_out_widget
         self.txt_out_widget = txt_out_widget
         self.output_height = output_height
+        self.plate_txt = ''
 
     def set_img(self, img: numpy.ndarray = None, img_height: int = None):
         if img_height is None:
@@ -259,12 +248,13 @@ class PlateDetectWidget(ImageViewer):
         plate = ''
         for b in recognise_result:
             plate += b.label
+        self.plate_txt = plate
         if self.txt_out_widget is not None:
-            print_to_text_widget(self.txt_out_widget, plate)
+            print_to_text_widget(self.txt_out_widget, plate[:2] + '-' + plate[2:4] + '-' + plate[4:])
 
 
 class BarcodeWidget(VideoFeed):
-    """Wisget to read barcode from webcam"""
+    """Widget to read barcode from webcam"""
 
     def __init__(self, txt_out_widget: Union[MyText, MyEntry] = None, *args, **kwargs):
         self.barcodes: list[ImageProcessor.BarcodeReader.Barcode] = []
@@ -310,6 +300,8 @@ class BarcodeWidget(VideoFeed):
 
                 imgtk = photo_from_ndarray(self.frame, self.img_height)
                 setLabelImg(self, imgtk)
+            else:
+                pass
         else:
             print_to_text_widget(self.txt_out_widget, 'closing')
             self.cap.release()
@@ -317,17 +309,18 @@ class BarcodeWidget(VideoFeed):
 
 
 class GateStatusWidget(MyLabel):
-    """Widget with a websocket to show gate status"""
+    """Widget with a websocket to show gate status. It run on anothre thread so REMEMBER to stop it"""
 
-    def __init__(self, master:MyFrame, backend_url: str, *args, **kwargs):
+    def __init__(self, master: MyFrame, backend_url: str, *args, **kwargs):
         super(GateStatusWidget, self).__init__(master, *args, **kwargs)
         self.backend_url = backend_url
         master.thread_list.append(self)
-        self.thread = threading.Thread(target=self.post_init)
+        self.thread = threading.Thread(target=self.websocket_thread)
         self.thread.start()
 
     # noinspection PyAttributeOutsideInit
-    def post_init(self):
+    def websocket_thread(self):
+        """This function will run on another thread. Closing the socket will stop this thread."""
         self.websocket = websocket.WebSocketApp(f"ws://{self.backend_url}/gate_status",
                                                 on_message=self.on_message,
                                                 on_open=self.on_open,
@@ -357,7 +350,8 @@ class GateStatusWidget(MyLabel):
 
 
 def from_rgb(rgb):
-    """translates a rgb tuple of int to a tkinter friendly color code
+    """
+    Translates a rgb tuple of int to a tkinter friendly color code
     """
     r, g, b = rgb
     return f'#{r:02x}{g:02x}{b:02x}'

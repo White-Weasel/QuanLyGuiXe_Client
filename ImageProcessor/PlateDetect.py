@@ -1,8 +1,9 @@
 import os
 import cv2
+import numpy
 import numpy as np
 import imutils
-from ImageProcessor import absolute_size_from_relative_size, draw_boxes, file_path
+from ImageProcessor import absolute_size_from_relative_size, draw_boxes, file_path, gray_upscale
 
 # Constants.
 INPUT_WIDTH = 320
@@ -23,7 +24,17 @@ PLATE_DETECT_TINY_MODEL = cv2.dnn.readNet(PLATE_DETECT_YOLO_TINY_WEIGHT, PLATE_D
 # MODEL = cv2.dnn.readNet(YOLO_WEIGHT, YOLO_CFG)
 
 
-def pre_process(input_image, net):
+def pre_process(input_image: numpy.ndarray, net, gray_scale: bool = False):
+    """
+    Use yolo model to detect plate in image
+
+    :param input_image:
+    :param net:
+    :param gray_scale: Turn input_image to black-white. Only useful when the image is super tiny and blocky.
+    :return:
+    """
+    if gray_scale:
+        input_image = gray_upscale(input_image, height=INPUT_HEIGHT)
     # Create a 4D blob from a frame.
     blob = cv2.dnn.blobFromImage(input_image, 1 / 255, (INPUT_WIDTH, INPUT_HEIGHT), [0, 0, 0], 1, crop=False)
     # blob = cv2.dnn.blobFromImage(image=input_image, size=(300, 300), mean=(104, 117, 123), swapRB=True)
@@ -36,7 +47,19 @@ def pre_process(input_image, net):
     return outputs
 
 
-def post_process(img, detect_result, min_confidence: float = CONFIDENCE_THRESHOLD, draw: bool = True):
+def post_process(img: numpy.ndarray,
+                 detect_result,
+                 min_confidence: float = CONFIDENCE_THRESHOLD,
+                 draw: bool = True):
+    """
+    Process the result got from yolo
+
+    :param img:
+    :param detect_result:
+    :param min_confidence:
+    :param draw:
+    :return:
+    """
     arr = np.zeros(detect_result[0][:1].shape)
     for r in detect_result:
         arr = np.concatenate([arr, np.array(r)])
@@ -53,7 +76,19 @@ def post_process(img, detect_result, min_confidence: float = CONFIDENCE_THRESHOL
     return boxes
 
 
-def detectPlate(img, network=PLATE_DETECT_TINY_MODEL, min_confidence: float = 0.5, draw: bool = True):
+def detectPlate(img: numpy.ndarray,
+                network=PLATE_DETECT_TINY_MODEL,
+                min_confidence: float = 0.5,
+                draw: bool = True):
+    """
+    Detect plate in image
+
+    :param img: input image in numpy.ndarray format
+    :param network: network used for detection
+    :param min_confidence:
+    :param draw: True: draw box on input image. False: do nothing
+    :return:
+    """
     if network is None:
         network = PLATE_DETECT_TINY_MODEL
     detect_result = pre_process(img, network)
