@@ -1,4 +1,5 @@
 import os
+import sys
 import urllib
 
 import cv2
@@ -165,7 +166,12 @@ def gray_upscale(in_img: numpy.ndarray, height: int, blur_percent: float = 0.03)
     return in_img
 
 
+def path_to_internal_file(file_dir: str):
+    # Check if MEIPASS attribute is available in sys else return current file path
+    bundle_dir = getattr(sys, '_MEIPASS', os.path.abspath(os.path.dirname(__file__)))
+    path_to_file = os.path.abspath(os.path.join(bundle_dir, file_dir))
+    return path_to_file
+
+
 def file_path(r_path):
-    this_file = os.path.dirname(os.path.abspath(__file__))
-    path = os.path.join(this_file, r_path)
-    return path
+    return path_to_internal_file(r_path)
