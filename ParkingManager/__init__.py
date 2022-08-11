@@ -1,18 +1,30 @@
 import datetime
+import threading
 import tkinter
 from functools import partial
 from MyTkinter import *
 import random
 from ImageProcessor import img_from_url
 import requests
+import logging
+
+logging.basicConfig(filename='parking.log',
+                    filemode='a',
+                    format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
+                    datefmt='%H:%M:%S',
+                    level=logging.DEBUG)
 
 COLORS = ["red", "orange", "yellow", "green", "blue", "violet", "black", ]
 DEFAULT_BTN_HEIGHT = 3
 DEFAULT_BTN_WIDTH = 15
 BACKEND_URL = '127.0.0.1:8000'
+DEFAULT_FONT = 'TkTextFont 14'
+DEFAULT_BIG_FONT = 'TkTextFont 16'
 
 
 # TODO: click result img to choose which barcode/plate to use
+# TODO: App's is a bit laggy
+# TODO: tra xe
 def random_rgb():
     r = random.randint(0, 250)
     g = random.randint(0, 250)
@@ -34,6 +46,7 @@ class GUI(tkinter.Tk):
 class MainFrame(MyFrame):
     def __init__(self, master: tk.Tk, *args, **kwargs):
         super().__init__(master, *args, **kwargs)
+        logging.info('\n\nInitializing app')
 
         """Key event example"""
 
@@ -96,7 +109,9 @@ class MainFrame(MyFrame):
         self.entry_control_btns_frame = MyFrame(self.entry_control_frame, name='entry control btns')
         self.entry_control_btns_frame.pack(side=RIGHT, fill=BOTH, expand=YES)
 
-        """Result frames"""
+        """
+        Result frames
+        """
         self.txt_result_frame = MyFrame(self.detect_result_frame, name='bien so')
         self.txt_result_frame.pack(fill=X, side=TOP, pady=25)
 
@@ -104,15 +119,18 @@ class MainFrame(MyFrame):
         # self.plate_num_result_frame.pack(side=TOP, fill=X, expand=YES)
         self.l3 = MyLabel(self.txt_result_frame, text="Bien so: ")
         self.l3.grid(row=1, column=1)
-        self.plate_textbox = MyEntry(self.txt_result_frame, state=DISABLED, font='TkTextFont 16')
+        self.plate_textbox = MyEntry(self.txt_result_frame, state=DISABLED, font=DEFAULT_BIG_FONT)
         self.plate_textbox.grid(row=1, column=2)
 
         # self.barcode_detect_result_frame = MyFrame(self.txt_result_frame, name='barcode')
         # self.barcode_detect_result_frame.pack(fill=X, side=BOTTOM)
         self.l4 = MyLabel(self.txt_result_frame, text="Ma ve: ")
         self.l4.grid(row=2, column=1)
-        self.barcode_textbox = MyEntry(self.txt_result_frame, state=DISABLED, font='TkTextFont 16')
+        self.barcode_textbox = MyEntry(self.txt_result_frame, state=DISABLED, font=DEFAULT_BIG_FONT)
         self.barcode_textbox.grid(row=2, column=2)
+
+        self.out_label = MyLabel(self.txt_result_frame, text='abcdef', font=DEFAULT_BIG_FONT, fg='blue')
+        self.out_label.grid(row=3, column=1, columnspan=2, pady=5)
 
         self.plate_detect_result_frame = MyFrame(self.detect_result_frame, name='anh bien so')
         self.plate_detect_result_frame.pack(fill=BOTH, pady=25, side=TOP)
@@ -149,6 +167,7 @@ class MainFrame(MyFrame):
                 rf"https://raw.githubusercontent.com/White-Weasel/QuanLyGuiXe_img/master/img/xemay{a}.jpg"),
                 self.CAMERA_HEIGHT)
             print(f'random img {a}')
+            logging.info(f'random img {a}')
 
         set_random_plate_img(567)
         self.cam2.pack(side=TOP)
@@ -163,20 +182,22 @@ class MainFrame(MyFrame):
                                  text="Chup anh",
                                  height=3, width=15,
                                  state=DISABLED)
-        self.snap_btn.pack(side=TOP, pady=25)
+        self.snap_btn.pack(side=TOP, pady=5)
 
-        def vehicle_entry():
-            data = self.parking_info('in')
-            result = requests.post(f"http://{BACKEND_URL}/parking", json=data)
-            if result.status_code % 100 == 2:
-                return result.json()
-            else:
-                print(result.content)
+        self.clear_btn = MyButton(self.entry_control_btns_frame,
+                                  text='Clear',
+                                  height=DEFAULT_BTN_HEIGHT, width=DEFAULT_BTN_WIDTH,
+                                  command=self.clear_parking_info)
+        self.clear_btn.pack(side=TOP, pady=5)
 
         self.enter_btn = MyButton(self.entry_control_btns_frame, text='Gui xe',
                                   height=DEFAULT_BTN_HEIGHT, width=DEFAULT_BTN_WIDTH,
-                                  command=vehicle_entry)
-        self.enter_btn.pack(side=TOP, pady=25)
+                                  command=self.vehicle_entry)
+        self.enter_btn.pack(side=TOP, pady=5)
+        self.out_btn = MyButton(self.entry_control_btns_frame, text='Tra xe',
+                                height=DEFAULT_BTN_HEIGHT, width=DEFAULT_BTN_WIDTH,
+                                command=self.vehicle_out)
+        self.out_btn.pack(side=TOP, pady=5)
         self.auto_checkbox = tk.Checkbutton(self.entry_control_btns_frame,
                                             text="Tu dong gui",
                                             variable=self.auto_entry,
@@ -226,6 +247,70 @@ class MainFrame(MyFrame):
             ticket = None
         return {'plate': plate, 'ticket': ticket, 'action': action}
 
+    def clear_parking_info(self):
+        # for txtw in self.all_text_widget():
+        #     print_to_text_widget(txtw, '')
+        print_to_text_widget(self.barcode_textbox, '')
+
+    def print_api_output(self, text):
+        self.out_label.configure(text=text, fg='blue')
+
+    def print_backend_err(self, text):
+        self.out_label.configure(text=text, fg='red')
+
+    def vehicle_entry(self):
+        """Send data to server. Process data and show result"""
+        def thread_target():
+            data = self.parking_info('in')
+            result = requests.post(f"http://{BACKEND_URL}/parking", json=data)
+            if result.status_code / 100 == 2:
+                res = result.json()
+                logging.info(f"Get vehicle {data['plate']} inside with ticket {res['ticket']}")
+                if res['result']:
+                    self.print_api_output(f"Gui xe thanh cong!\nVe xe:{res['ticket']}")
+                else:
+                    self.print_api_output(f"Gui xe khong thanh cong")
+            elif result.status_code / 100 == 5:
+                try:
+                    res = result.json()
+                    self.print_backend_err(res['err'])
+                except requests.exceptions.JSONDecodeError:
+                    self.print_backend_err(f"Loi {result.status_code}: {str(result.content)}")
+
+            else:
+                print(f'error: {result.content}')
+                logging.info(f'error: {result.content}')
+
+        t = threading.Thread(target=thread_target)
+        t.start()
+
+    def vehicle_out(self):
+        """Send data to server. Process data and show result"""
+
+        def thread_target():
+            data = self.parking_info('out')
+            result = requests.post(f"http://{BACKEND_URL}/parking", json=data)
+            if result.status_code / 100 == 2:
+                res = result.json()
+                logging.info(f"Get vehicle {data['plate']} out with ticket {data['ticket']}")
+                if res['result']:
+                    self.print_api_output(f"Tra xe thanh cong!\nGia gui xe:{res['cost']}")
+                else:
+                    self.print_api_output(f"Gui xe khong thanh cong")
+            elif result.status_code / 100 == 5:
+                try:
+                    res = result.json()
+                    self.print_backend_err(res['err'])
+                except requests.exceptions.JSONDecodeError:
+                    self.print_backend_err(f"Loi {result.status_code}: {str(result.content)}")
+
+            else:
+                print(f'error: {result.content}')
+                logging.info(f'error: {result.content}')
+
+        t = threading.Thread(target=thread_target)
+        t.start()
+
     def snapshot(self):
         self.plate_textbox.insert(INSERT, 'abc')
 
@@ -259,7 +344,7 @@ class MainFrame(MyFrame):
             self.cam1.output_widget = None
             self.cam2.img_out_widget = None
 
-            self.plate_detect_output_img.configure(image='')
+            # self.plate_detect_output_img.configure(image='')
 
             self.plate_textbox.configure(state=NORMAL)
             self.barcode_textbox.configure(state=NORMAL)
@@ -267,7 +352,7 @@ class MainFrame(MyFrame):
 
     def on_closing(self):
         self.stopAllThread()
-
+        logging.info('Closing')
         # FIXME: only the main thread can call to tkinter funtion. That's why the app can freeze here
         #  The after(200) funtion is only a bandaid fix and can fail if stopAllThread take too long
         self.master.after(200, self.master.destroy)

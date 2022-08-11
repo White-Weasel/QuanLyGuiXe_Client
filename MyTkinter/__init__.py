@@ -12,10 +12,11 @@ import cv2
 import imutils
 from PIL import Image, ImageTk
 import websocket
-from websocket import create_connection
 from ImageProcessor import img_crop
+import logging
 
 
+# TODO: create detect_plate function sepereated from the main frunction so GUI can call them without reload the frame
 class MyFrame(tk.Frame):
     """
     A frame that hold lists of its child
@@ -23,10 +24,10 @@ class MyFrame(tk.Frame):
 
     def __init__(self, master, *args, **kwargs):
         super().__init__(master, *args, **kwargs)
-        self.entry_list = []
-        self.label_list = []
-        self.button_list = []
-        self.text_list = []
+        self.entry_list: list[MyEntry] = []
+        self.label_list: list[MyLabel] = []
+        self.button_list: list[MyButton] = []
+        self.text_list: list[MyText] = []
         self.frame_list: list[MyFrame] = []
         self.canvas_list = []
         self.thread_list = []
@@ -35,6 +36,13 @@ class MyFrame(tk.Frame):
             master.frame_list.append(self)
         except AttributeError:
             master.frame_list = [self]
+
+    def all_text_widget(self):
+        result = []
+        for f in get_all_child_frames(self):
+            result += f.entry_list
+            result += f.text_list
+        return result
 
     def stopAllThread(self):
         """
@@ -48,6 +56,7 @@ class MyFrame(tk.Frame):
             for t in f.thread_list:
                 t.stop()
                 print(f"stoped {t}")
+                logging.info(f"stoped {t}")
 
     def widget_tooltips_content(self):
         """return all parent widgets names"""
@@ -133,7 +142,7 @@ def print_to_text_widget(widget: Union[MyText, MyEntry], text):
 class VideoFeed(MyLabel):
     """
     Widget to show webcam video\n
-    REMEMBER TO STOP IT
+    REMEMBER TO STOP IT PROPERLY. Use the stop_lock attribute to stop it.
     """
 
     def __init__(self, master: MyFrame, cap: cv2.VideoCapture, img_height: int = 250, *args, **kwargs):
@@ -153,9 +162,8 @@ class VideoFeed(MyLabel):
     def showFrame(self):
         """
         This function will be running on another thread. If you overide it,
-        code it so setting self.stop_lock as True will stop it properly.
-        BEWARE that tkinter functions WILL run in the MAIN THREAD so joining this thread may cause freezing.
-        :return:
+        code it so that setting self.stop_lock as True will stop it properly.
+        BEWARE that tkinter functions will run in the main thread so joining this thread may cause freezing.
         """
         """if not self.stop_lock:
             succ, frame = self.cap.read()
@@ -207,6 +215,7 @@ class PlateDetectWidget(ImageViewer):
     """
     A widget that show a static image, detect plate in it and show detect result on other widgets.
     """
+
     def __init__(self,
                  detect_network=ImageProcessor.PlateDetect.PLATE_DETECT_TINY_MODEL,
                  recognise_network=ImageProcessor.PlateRecognition.RECOGNISE_PLATE_TINY_MODEL,
@@ -216,13 +225,14 @@ class PlateDetectWidget(ImageViewer):
                  txt_out_widget: Union[MyText, MyEntry] = None,
                  *args, **kwargs):
         """
+        init.
 
-        :param recognise_network: Deep learning network used to recognise plate
-        :param detect_network: Deep learning network used to detect plate
+        :param recognise_network: Deep learning network used to recognise plate.
+        :param detect_network: Deep learning network used to detect plate.
         :param min_confidence:
-        :param img_out_widget: widget to show cropped image of plate
-        :param output_height: the height that the cropped image will be resized to
-        :param txt_out_widget: widget to print plate text to
+        :param img_out_widget: widget to show cropped image of plate.
+        :param output_height: the height that the cropped image will be resized to.
+        :param txt_out_widget: widget to print plate text to.
         """
         super().__init__(*args, **kwargs)
         self.recognise_network = recognise_network
@@ -256,7 +266,16 @@ class PlateDetectWidget(ImageViewer):
 class BarcodeWidget(VideoFeed):
     """Widget to read barcode from webcam"""
 
-    def __init__(self, txt_out_widget: Union[MyText, MyEntry] = None, *args, **kwargs):
+    def __init__(self,
+                 txt_out_widget: Union[MyText, MyEntry] = None,
+                 auto_clear: bool = False,
+                 *args, **kwargs):
+        """
+
+        :param txt_out_widget: entry/text widget to print barcode to.
+        :param auto_clear: True: automaticaly clear the txt_out_widget if no barcode dected.
+        """
+        self.auto_clear = auto_clear
         self.barcodes: list[ImageProcessor.BarcodeReader.Barcode] = []
         self.txt_out_widget = txt_out_widget
         super(BarcodeWidget, self).__init__(*args, **kwargs)
@@ -286,30 +305,34 @@ class BarcodeWidget(VideoFeed):
 
     # noinspection PyAttributeOutsideInit
     def showFrame(self):
-        while not self.stop_lock:
+        if self.stop_lock:
+            self.cap.release()
+            print('closed cap')
+            logging.info('Closed cv2 cap')
+        else:
             succ, self.frame = self.cap.read()
             if succ:
                 self.frame = cv2.flip(self.frame, 1)
 
                 self.barcodes = ImageProcessor.BarcodeReader.readBarcode(self.frame)
 
-                if len(self.barcodes) > 0:
-                    if self.txt_out_widget is not None:
+                if self.txt_out_widget is not None:
+                    if len(self.barcodes) > 0:
                         barcode = self.barcodes[0].info
+                    else:
+                        barcode = ''
+                    if self.auto_clear or len(self.barcodes) > 0:
                         print_to_text_widget(self.txt_out_widget, barcode)
 
                 imgtk = photo_from_ndarray(self.frame, self.img_height)
                 setLabelImg(self, imgtk)
             else:
                 pass
-        else:
-            print_to_text_widget(self.txt_out_widget, 'closing')
-            self.cap.release()
-            return
+            self.after(20, self.showFrame)
 
 
 class GateStatusWidget(MyLabel):
-    """Widget with a websocket to show gate status. It run on anothre thread so REMEMBER to stop it"""
+    """Widget with a websocket to show gate status. It runs on another thread so REMEMBER to stop it"""
 
     def __init__(self, master: MyFrame, backend_url: str, *args, **kwargs):
         super(GateStatusWidget, self).__init__(master, *args, **kwargs)
@@ -320,7 +343,10 @@ class GateStatusWidget(MyLabel):
 
     # noinspection PyAttributeOutsideInit
     def websocket_thread(self):
-        """This function will run on another thread. Closing the socket will stop this thread."""
+        """
+        This function will run on another thread. Closing the socket will stop this thread.
+        Since it doesn't use any tkinter funtion, it might be safe to join it.
+        """
         self.websocket = websocket.WebSocketApp(f"ws://{self.backend_url}/gate_status",
                                                 on_message=self.on_message,
                                                 on_open=self.on_open,
@@ -333,7 +359,7 @@ class GateStatusWidget(MyLabel):
             if data['gate_status']:
                 gate_status = 'Mo'
             else:
-                gate_status = 'dong'
+                gate_status = 'Dong'
             self.config(text=gate_status)
         except KeyError:
             pass
@@ -347,6 +373,10 @@ class GateStatusWidget(MyLabel):
 
     def stop(self):
         self.websocket.close()
+        self.join()
+
+    def join(self):
+        self.thread.join()
 
 
 def from_rgb(rgb):
