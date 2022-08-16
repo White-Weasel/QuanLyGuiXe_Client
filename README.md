@@ -1,18 +1,5 @@
 # Hỗ trợ quản lý gửi trả xe bằng công nghệ thị giác máy tính
 
-<!-- 
-### Table of Contents
-
-- [Real-time Auto License Plate Recognition with Jetson Nano](#real-time-auto-license-plate-recognition-with-jetson-nano)
-    - [Table of Contents](#table-of-contents)
-  - [Pipeline](#pipeline)
-  - [Setting up your Jetson](./doc/jetson-setup.md)
-  - [Vienamese Plate Dataset](./doc/dataset.md)
-  - [License PLate Detection](./doc/plate-detect.md)
-  - [License Plate Recognition](./doc/plate-ocr.md)
-  - [Trained Models](#trained-models)
-  - [Reference](#reference)
--->
 ## Cài đặt:
 
 * Tải và chạy [file thực thi .exe](https://github.com/White-Weasel/QuanLyGuiXe_Client/releases/download/v0.02-beta/Quan_Ly_Do_Xe.exe) từ trang [Releases](https://github.com/White-Weasel/QuanLyGuiXe_Client/releases)
@@ -26,6 +13,7 @@
 
 - Cài đặt các package cần thiết bằng lệnh:
 `pip install -r requirements.txt`
+- Cài đặt [backend](https://github.com/White-Weasel/QuanLyGuiXe_Server)
 - Khởi động chương trình: `py main.py`
 
 ## Vienamese Plate Dataset

@@ -2,9 +2,9 @@ import json
 import threading
 from tkinter import *
 import tkinter as tk
-from typing import Union
+from typing import Union, Callable
 import numpy
-import ImageProcessor.PlateDetect
+import ImageProcessor.PlateDetector
 import ImageProcessor.PlateRecognition
 import ImageProcessor.BarcodeReader
 # from ImageProcessor.FacialDetect import detectFace
@@ -30,6 +30,7 @@ class MyFrame(tk.Frame):
         self.text_list: list[MyText] = []
         self.frame_list: list[MyFrame] = []
         self.canvas_list = []
+        self.img_list = []
         self.thread_list = []
         self.toolTip = ToolTip(self, self.widget_tooltips_content())
         try:
@@ -191,6 +192,10 @@ class ImageViewer(tk.Label):
                  img_height: int = 100,
                  *args, **kwargs):
         super(ImageViewer, self).__init__(master, *args, **kwargs)
+        try:
+            master.img_list.append(self)
+        except AttributeError:
+            master.img_list = [self]
         self.img_height = img_height
 
         if cv2_img is not None:
@@ -217,12 +222,10 @@ class PlateDetectWidget(ImageViewer):
     """
 
     def __init__(self,
-                 detect_network=ImageProcessor.PlateDetect.PLATE_DETECT_TINY_MODEL,
+                 detect_network=ImageProcessor.PlateDetector.PLATE_DETECT_TINY_MODEL,
                  recognise_network=ImageProcessor.PlateRecognition.RECOGNISE_PLATE_TINY_MODEL,
                  min_confidence: float = 0.5,
-                 img_out_widget: ImageViewer = None,
                  output_height: int = 100,
-                 txt_out_widget: Union[MyText, MyEntry] = None,
                  *args, **kwargs):
         """
         init.
@@ -235,59 +238,72 @@ class PlateDetectWidget(ImageViewer):
         :param txt_out_widget: widget to print plate text to.
         """
         super().__init__(*args, **kwargs)
+        self.detect_result = None
+        self.recognise_result = None
         self.recognise_network = recognise_network
         self.detect_network = detect_network
         self.min_confidence = min_confidence
-        self.img_out_widget = img_out_widget
-        self.txt_out_widget = txt_out_widget
         self.output_height = output_height
-        self.plate_txt = ''
+        self.plate_list = []
+        self.plate_imgs = None
 
     def set_img(self, img: numpy.ndarray = None, img_height: int = None):
         if img_height is None:
             img_height = self.img_height
         self.cv2_img = img
-        detect_result = ImageProcessor.PlateDetect.detectPlate(self.cv2_img, draw=True)
+        self.detect_result = ImageProcessor.PlateDetector.detectPlate(self.cv2_img, draw=True)
         self.photo = photo_from_ndarray(self.cv2_img, img_height)
         setLabelImg(self, self.photo)
 
-        plate_img = img_crop(self.cv2_img, detect_result[0])
-        recognise_result = ImageProcessor.PlateRecognition.recognisePlate(plate_img, draw=False)
-        if self.img_out_widget is not None:
-            setLabelImg(self.img_out_widget, photo_from_ndarray(plate_img, self.output_height))
-        plate = ''
-        for b in recognise_result:
-            plate += b.label
-        self.plate_txt = plate
-        if self.txt_out_widget is not None:
-            print_to_text_widget(self.txt_out_widget, plate[:2] + '-' + plate[2:4] + '-' + plate[4:])
+        if len(self.detect_result) > 0:
+            self.plate_imgs = [img_crop(self.cv2_img, p) for p in self.detect_result]
+            self.recognise_result = [ImageProcessor.PlateRecognition.recognisePlate(i, draw=False)
+                                     for i in self.plate_imgs]
+            """
+            if self.img_out_widget is not None:
+                setLabelImg(self.img_out_widget, photo_from_ndarray(self.plate_imgs, self.output_height))
+            """
+            p_list = []
+            for p in self.recognise_result:
+                plate = ''
+                for b in p:
+                    plate += b.label
+                p_list.append(plate)
+            self.plate_list = p_list
+            """
+            if self.txt_out_widget is not None:
+                print_to_text_widget(self.txt_out_widget, plate[:2] + '-' + plate[2:4] + '-' + plate[4:])
+            """
 
 
 class BarcodeWidget(VideoFeed):
     """Widget to read barcode from webcam"""
 
     def __init__(self,
-                 txt_out_widget: Union[MyText, MyEntry] = None,
+                 bool_var: tk.BooleanVar = None,
                  auto_clear: bool = False,
+                 onBarcodeDetected: Callable = None,
+                 onBarcodeNotDetected: Callable = None,
                  *args, **kwargs):
         """
 
         :param txt_out_widget: entry/text widget to print barcode to.
         :param auto_clear: True: automaticaly clear the txt_out_widget if no barcode dected.
         """
+        self.onBarcodeNotDetectedCallback = onBarcodeNotDetected
+        self.onBarcodeDetectedCallback = onBarcodeDetected
+
+        self.bool_var = bool_var
         self.auto_clear = auto_clear
+
         self.barcodes: list[ImageProcessor.BarcodeReader.Barcode] = []
-        self.txt_out_widget = txt_out_widget
         super(BarcodeWidget, self).__init__(*args, **kwargs)
         self.stop_lock = False
 
     # noinspection PyAttributeOutsideInit
-    """def showFrame(self):
-        if self.stop_lock:
-            # FIXME: code doesnt go in here even if stop lock is true
-            self.cap.release()
-            print('closed cap')
-        else:
+    def showFrame(self):
+        # TODO: The self.after method will slow the app down, but the while method will cause flashing
+        while not self.stop_lock:
             succ, self.frame = self.cap.read()
             if succ:
                 self.frame = cv2.flip(self.frame, 1)
@@ -295,42 +311,27 @@ class BarcodeWidget(VideoFeed):
                 self.barcodes = ImageProcessor.BarcodeReader.readBarcode(self.frame)
 
                 if len(self.barcodes) > 0:
-                    if self.txt_out_widget is not None:
-                        barcode = self.barcodes[0].info
-                        print_to_text_widget(self.txt_out_widget, barcode)
+                    if self.onBarcodeDetectedCallback is not None:
+                        self.onBarcodeDetectedCallback()
+                else:
+                    if self.onBarcodeNotDetectedCallback is not None:
+                        self.onBarcodeNotDetectedCallback()
 
                 imgtk = photo_from_ndarray(self.frame, self.img_height)
                 setLabelImg(self, imgtk)
-                self.after(20, self.showFrame)"""
+            # self.after(20, self.showFrame)
+        self.cap.release()
+        print('closed cap')
+        logging.info('Closed cv2 cap')
 
-    # noinspection PyAttributeOutsideInit
-    def showFrame(self):
-        if self.stop_lock:
-            self.cap.release()
-            print('closed cap')
-            logging.info('Closed cv2 cap')
-        else:
-            succ, self.frame = self.cap.read()
-            if succ:
-                self.frame = cv2.flip(self.frame, 1)
+    def onbarcodeDetected(self, func):
+        self.onBarcodeDetectedCallback = func
 
-                self.barcodes = ImageProcessor.BarcodeReader.readBarcode(self.frame)
-
-                if self.txt_out_widget is not None:
-                    if len(self.barcodes) > 0:
-                        barcode = self.barcodes[0].info
-                    else:
-                        barcode = ''
-                    if self.auto_clear or len(self.barcodes) > 0:
-                        print_to_text_widget(self.txt_out_widget, barcode)
-
-                imgtk = photo_from_ndarray(self.frame, self.img_height)
-                setLabelImg(self, imgtk)
-            else:
-                pass
-            self.after(20, self.showFrame)
+    def onbarcodeNotDetected(self, func):
+        self.onBarcodeNotDetectedCallback = func
 
 
+# noinspection PyUnusedLocal,PyMethodMayBeStatic
 class GateStatusWidget(MyLabel):
     """Widget with a websocket to show gate status. It runs on another thread so REMEMBER to stop it"""
 

@@ -2,6 +2,8 @@ import datetime
 import threading
 import tkinter
 from functools import partial
+
+import utls
 from MyTkinter import *
 import random
 from ImageProcessor import img_from_url
@@ -17,14 +19,15 @@ logging.basicConfig(filename='parking.log',
 COLORS = ["red", "orange", "yellow", "green", "blue", "violet", "black", ]
 DEFAULT_BTN_HEIGHT = 3
 DEFAULT_BTN_WIDTH = 15
+DEFAULT_IMG_HEIGHT = 100
 BACKEND_URL = '127.0.0.1:8000'
 DEFAULT_FONT = 'TkTextFont 14'
 DEFAULT_BIG_FONT = 'TkTextFont 16'
+from .Parking import ParkingInfo
 
 
 # TODO: click result img to choose which barcode/plate to use
-# TODO: App's is a bit laggy
-# TODO: tra xe
+# TODO: MVC
 def random_rgb():
     r = random.randint(0, 250)
     g = random.randint(0, 250)
@@ -40,6 +43,11 @@ class GUI(tkinter.Tk):
         super(GUI, self).__init__(*args, **kwargs)
         self.mainFrame = MainFrame(self)
         self.mainloop()
+
+
+class ParkingManager:
+    def __init__(self):
+        pass
 
 
 # noinspection PyAttributeOutsideInit
@@ -63,6 +71,8 @@ class MainFrame(MyFrame):
         self.CAMERA_HEIGHT = 250
         self.OUTPUT_HEIGHT = 100
         self.auto_entry = tk.BooleanVar()
+        self.barcode_read = tkinter.BooleanVar()
+        self.cur_barcode = ''
 
         menubar = Menu(master)
         filemenu = Menu(menubar, tearoff=0)
@@ -79,7 +89,6 @@ class MainFrame(MyFrame):
 
         master.config(menu=menubar)
 
-        self.tooptip_list = [f.toolTip for f in get_all_child_frames(self)]
         random.seed(datetime.datetime.now().timestamp())
         master.after(10, self.home)
 
@@ -100,11 +109,11 @@ class MainFrame(MyFrame):
         self.entry_control_frame = MyFrame(self.right_frame, name='entry control')
         self.entry_control_frame.pack(fill=BOTH, expand=1, side=TOP)
 
-        self.gate_control_frame = MyFrame(self.right_frame, name='gate control')
-        self.gate_control_frame.pack(fill=BOTH, expand=1, side=BOTTOM)
+        self.img_detect_result_frame = MyFrame(self.right_frame, name='gate control')
+        self.img_detect_result_frame.pack(fill=BOTH, expand=1, side=BOTTOM)
 
-        self.detect_result_frame = MyFrame(self.entry_control_frame, name='detect results')
-        self.detect_result_frame.pack(side=LEFT, fill=BOTH, expand=YES)
+        self.txt_detect_result_frame = MyFrame(self.entry_control_frame, name='detect results')
+        self.txt_detect_result_frame.pack(side=LEFT, fill=BOTH, expand=YES, pady=10)
 
         self.entry_control_btns_frame = MyFrame(self.entry_control_frame, name='entry control btns')
         self.entry_control_btns_frame.pack(side=RIGHT, fill=BOTH, expand=YES)
@@ -112,65 +121,78 @@ class MainFrame(MyFrame):
         """
         Result frames
         """
-        self.txt_result_frame = MyFrame(self.detect_result_frame, name='bien so')
-        self.txt_result_frame.pack(fill=X, side=TOP, pady=25)
-
         # self.plate_num_result_frame = MyFrame(self.txt_result_frame, name='plate_num')
         # self.plate_num_result_frame.pack(side=TOP, fill=X, expand=YES)
-        self.l3 = MyLabel(self.txt_result_frame, text="Bien so: ")
+        self.l3 = MyLabel(self.txt_detect_result_frame, text="Bien so: ")
         self.l3.grid(row=1, column=1)
-        self.plate_textbox = MyEntry(self.txt_result_frame, state=DISABLED, font=DEFAULT_BIG_FONT)
+        self.plate_textbox = MyEntry(self.txt_detect_result_frame, state=DISABLED, font=DEFAULT_BIG_FONT)
         self.plate_textbox.grid(row=1, column=2)
 
         # self.barcode_detect_result_frame = MyFrame(self.txt_result_frame, name='barcode')
         # self.barcode_detect_result_frame.pack(fill=X, side=BOTTOM)
-        self.l4 = MyLabel(self.txt_result_frame, text="Ma ve: ")
-        self.l4.grid(row=2, column=1)
-        self.barcode_textbox = MyEntry(self.txt_result_frame, state=DISABLED, font=DEFAULT_BIG_FONT)
-        self.barcode_textbox.grid(row=2, column=2)
+        # self.l4 = MyLabel(self.txt_detect_result_frame, text="Ma ve: ")
+        # self.l4.grid(row=2, column=1)
+        # self.barcode_textbox = MyEntry(self.txt_detect_result_frame, state=DISABLED, font=DEFAULT_BIG_FONT)
+        # self.barcode_textbox.grid(row=2, column=2)
+        # self.barcode_checkbox = tk.Checkbutton(self.txt_detect_result_frame,
+        #                                        variable=self.barcode_read,
+        #                                        onvalue=True,
+        #                                        offvalue=False,
+        #                                        state=DISABLED,
+        #                                        height=3)
+        # self.barcode_checkbox.grid(row=2, column=2, sticky=W)
 
-        self.out_label = MyLabel(self.txt_result_frame, text='abcdef', font=DEFAULT_BIG_FONT, fg='blue')
-        self.out_label.grid(row=3, column=1, columnspan=2, pady=5)
+        self.out_label = MyLabel(self.txt_detect_result_frame, text='Hello!', font=DEFAULT_BIG_FONT, fg='blue')
+        self.out_label.grid(row=3, column=1, columnspan=2, pady=20)
 
-        self.plate_detect_result_frame = MyFrame(self.detect_result_frame, name='anh bien so')
-        self.plate_detect_result_frame.pack(fill=BOTH, pady=25, side=TOP)
-        self.l5 = MyLabel(self.plate_detect_result_frame, text='Bien so: ')
-        self.l5.pack(anchor=NW)
-        self.plate_detect_output_img = ImageViewer(self.plate_detect_result_frame, img_height=100)
-        self.plate_detect_output_img.pack(anchor=NW)
+        """self.img_result_frame = MyFrame(self.txt_detect_result_frame, name='img_result_frame')
+        self.img_result_frame.pack(fill=BOTH, pady=7, side=TOP)"""
+
+        self.l5 = MyLabel(self.img_detect_result_frame, text='Anh bien so: ')
+        self.l5.grid(row=1, column=1, sticky=W)
+        self.plate_images_frame = MyFrame(self.img_detect_result_frame, height=DEFAULT_IMG_HEIGHT)
+        self.plate_images_frame.grid(row=1, column=2)
+
+        self.l6 = MyLabel(self.img_detect_result_frame, text='Anh khuon mat: ')
+        self.l6.grid(row=2, column=1, sticky=W)
+        self.face_images_frame = MyFrame(self.img_detect_result_frame, height=DEFAULT_IMG_HEIGHT)
+        self.face_images_frame.grid(row=2, column=2)
 
         """Cam frames widgets"""
         self.l1 = MyLabel(self.face_cam_frame, text="Camera 1")
         self.l1.pack(anchor=NW)
         # default capture backend cause warning when closed. cv2.CAP_DSHOW backend does not
         cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
-        self.cam1 = BarcodeWidget(master=self.face_cam_frame, cap=cap, img_height=self.CAMERA_HEIGHT,
-                                  txt_out_widget=self.barcode_textbox)
-        self.cam1.pack(anchor=CENTER)
+        self.barcode_cam = BarcodeWidget(master=self.face_cam_frame, cap=cap, img_height=self.CAMERA_HEIGHT,
+                                         bool_var=self.barcode_read, onBarcodeDetected=self.onBarcodeDetected)
+        self.barcode_cam.pack(anchor=CENTER)
 
         self.l2 = MyLabel(self.plate_cam_frame, text="Camera 2")
         self.l2.pack(side=TOP, anchor=NW)
 
-        self.cam2 = PlateDetectWidget(master=self.plate_cam_frame,
-                                      img_out_widget=self.plate_detect_output_img,
-                                      txt_out_widget=self.plate_textbox,
-                                      img_height=self.CAMERA_HEIGHT)
-
         # FIXME: PlateProcess.py predicts this differently
+        self.plate_cam = PlateDetectWidget(master=self.plate_cam_frame,
+                                           img_height=self.CAMERA_HEIGHT)
+
         def set_random_plate_img(i: int = None):
             # TODO: get img in new thread
-            if i is None:
-                a = random.randint(0, 2000)
-            else:
-                a = i
-            self.cam2.set_img(img_from_url(
-                rf"https://raw.githubusercontent.com/White-Weasel/QuanLyGuiXe_img/master/img/xemay{a}.jpg"),
-                self.CAMERA_HEIGHT)
-            print(f'random img {a}')
-            logging.info(f'random img {a}')
+            def thread_target():
+                if i is None:
+                    a = random.randint(0, 2000)
+                else:
+                    a = i
+                self.plate_cam.set_img(img_from_url(
+                    rf"https://raw.githubusercontent.com/White-Weasel/QuanLyGuiXe_img/master/img/xemay{a}.jpg"),
+                    self.CAMERA_HEIGHT)
+                print(f'random img {a}')
+                logging.info(f'random img {a}')
+                return
+
+            t = threading.Thread(target=thread_target)
+            t.start()
 
         set_random_plate_img(567)
-        self.cam2.pack(side=TOP)
+        self.plate_cam.pack(side=TOP)
 
         self.b1 = MyButton(self.plate_cam_frame, text='Next random img', height=2,
                            command=partial(set_random_plate_img))
@@ -178,11 +200,13 @@ class MainFrame(MyFrame):
 
         """Entry Control frame"""
         # TODO: do smt with this btn
+        """
         self.snap_btn = MyButton(self.entry_control_btns_frame,
                                  text="Chup anh",
                                  height=3, width=15,
                                  state=DISABLED)
         self.snap_btn.pack(side=TOP, pady=5)
+        """
 
         self.clear_btn = MyButton(self.entry_control_btns_frame,
                                   text='Clear',
@@ -198,6 +222,7 @@ class MainFrame(MyFrame):
                                 height=DEFAULT_BTN_HEIGHT, width=DEFAULT_BTN_WIDTH,
                                 command=self.vehicle_out)
         self.out_btn.pack(side=TOP, pady=5)
+        """
         self.auto_checkbox = tk.Checkbutton(self.entry_control_btns_frame,
                                             text="Tu dong gui",
                                             variable=self.auto_entry,
@@ -206,8 +231,10 @@ class MainFrame(MyFrame):
                                             command=partial(self.toggle_auto))
         self.auto_checkbox.select()
         self.auto_checkbox.pack(side=TOP)
+        """
 
-        self.gate_status_frame = MyFrame(self.gate_control_frame, name='gate status', borderwidth=1)
+        """
+        self.gate_status_frame = MyFrame(self.img_detect_result_frame, name='gate status', borderwidth=1)
         self.gate_status_frame.pack(expand=YES, side=TOP, anchor=N)
         self.gate_label = MyLabel(self.gate_status_frame, text="Trang thai cong: ")
         self.gate_label.pack(side=LEFT)
@@ -222,7 +249,7 @@ class MainFrame(MyFrame):
             data = {'action': action}
             requests.post('http://127.0.0.1:8000/gate_control', json=data)
 
-        self.gate_control_btn_frame = MyFrame(self.gate_control_frame, name='gate control btn')
+        self.gate_control_btn_frame = MyFrame(self.img_detect_result_frame, name='gate control btn')
         self.gate_control_btn_frame.pack(fill=Y, side=TOP, expand=YES, anchor=N)
         self.open_gate_btn = MyButton(self.gate_control_btn_frame, text='Mo cong',
                                       height=DEFAULT_BTN_HEIGHT, width=DEFAULT_BTN_WIDTH,
@@ -232,25 +259,38 @@ class MainFrame(MyFrame):
                                        height=DEFAULT_BTN_HEIGHT, width=DEFAULT_BTN_WIDTH,
                                        command=partial(gate_control, 'close'))
         self.close_gate_btn.pack(side=RIGHT, anchor=CENTER, padx=10)
+        """
 
         self.default_frame_color = []
         for f in get_all_child_frames(self):
             self.default_frame_color.append(f.cget("background"))
         self.pack(fill=BOTH, expand=YES, padx=25, pady=25)
 
-    def parking_info(self, action: str):
-        # the text in plate textbox is formated, so we use the unformated one in cam2
-        plate = self.cam2.plate_txt
-        try:
-            ticket = int(self.barcode_textbox.get())
-        except ValueError:
-            ticket = None
-        return {'plate': plate, 'ticket': ticket, 'action': action}
+    def onBarcodeDetected(self):
+        if self.barcode_cam.barcodes[0].info != self.cur_barcode:
+            self.clear_parking_info()
+            utls.beep_beep()
+            self.cur_barcode = self.barcode_cam.barcodes[0].info
+            self.barcode_read.set(True)
+            print_to_text_widget(self.plate_textbox, self.plate_cam.plate_list[0])
+
+            for pimg in self.plate_cam.plate_imgs:
+                i = ImageViewer(self.plate_images_frame, height=DEFAULT_IMG_HEIGHT)
+                i.set_img(pimg)
+                i.pack(side=LEFT)
+
+    def parking_info(self) -> ParkingInfo:
+        # TODO: use selected info
+        plate = self.plate_cam.plate_list[0]
+        ticket = self.cur_barcode
+        return ParkingInfo(ticket, plate)
 
     def clear_parking_info(self):
-        # for txtw in self.all_text_widget():
-        #     print_to_text_widget(txtw, '')
-        print_to_text_widget(self.barcode_textbox, '')
+        self.cur_barcode = ''
+        for txtw in self.all_text_widget():
+            print_to_text_widget(txtw, '')
+        for i in self.plate_images_frame.img_list:
+            i.destroy()
 
     def print_api_output(self, text):
         self.out_label.configure(text=text, fg='blue')
@@ -260,14 +300,15 @@ class MainFrame(MyFrame):
 
     def vehicle_entry(self):
         """Send data to server. Process data and show result"""
+
         def thread_target():
-            data = self.parking_info('in')
-            result = requests.post(f"http://{BACKEND_URL}/parking", json=data)
+            data = self.parking_info()
+            result = data.entry()
             if result.status_code / 100 == 2:
                 res = result.json()
-                logging.info(f"Get vehicle {data['plate']} inside with ticket {res['ticket']}")
+                logging.info(f"Get vehicle {data.plate} inside with ticket {res['ticket']}")
                 if res['result']:
-                    self.print_api_output(f"Gui xe thanh cong!\nVe xe:{res['ticket']}")
+                    self.print_api_output(f"Gui xe thanh cong!\nBien so:{data.plate}")
                 else:
                     self.print_api_output(f"Gui xe khong thanh cong")
             elif result.status_code / 100 == 5:
@@ -276,10 +317,12 @@ class MainFrame(MyFrame):
                     self.print_backend_err(res['err'])
                 except requests.exceptions.JSONDecodeError:
                     self.print_backend_err(f"Loi {result.status_code}: {str(result.content)}")
-
+            elif result.status_code == 422:
+                self.print_backend_err("Thong tin khong hop le")
             else:
                 print(f'error: {result.content}')
                 logging.info(f'error: {result.content}')
+            self.clear_parking_info()
 
         t = threading.Thread(target=thread_target)
         t.start()
@@ -288,25 +331,28 @@ class MainFrame(MyFrame):
         """Send data to server. Process data and show result"""
 
         def thread_target():
-            data = self.parking_info('out')
-            result = requests.post(f"http://{BACKEND_URL}/parking", json=data)
+            data = self.parking_info()
+            result = data.out()
+
             if result.status_code / 100 == 2:
                 res = result.json()
-                logging.info(f"Get vehicle {data['plate']} out with ticket {data['ticket']}")
+                logging.info(f"Get vehicle {data.plate} out with ticket {data.ticket}")
                 if res['result']:
-                    self.print_api_output(f"Tra xe thanh cong!\nGia gui xe:{res['cost']}")
+                    self.print_api_output(f"Tra xe thanh cong!\nBien so:{data.plate}\nGia gui xe:{res['cost']}")
                 else:
-                    self.print_api_output(f"Gui xe khong thanh cong")
+                    self.print_backend_err(f"Tra xe khong thanh cong")
             elif result.status_code / 100 == 5:
                 try:
                     res = result.json()
                     self.print_backend_err(res['err'])
                 except requests.exceptions.JSONDecodeError:
                     self.print_backend_err(f"Loi {result.status_code}: {str(result.content)}")
-
+            elif result.status_code == 422:
+                self.print_backend_err("Thong tin khong hop le")
             else:
                 print(f'error: {result.content}')
                 logging.info(f'error: {result.content}')
+            self.clear_parking_info()
 
         t = threading.Thread(target=thread_target)
         t.start()
@@ -319,11 +365,11 @@ class MainFrame(MyFrame):
 
         self._debug = not self._debug
         """Toggle help tooltips"""
-        for tt in self.tooptip_list:
+        for f in get_all_child_frames(self):
             if self._debug:
-                tt.bind()
+                f.toolTip.bind()
             else:
-                tt.unbind()
+                f.toolTip.unbind()
 
         """Toggle frame bg color"""
         if self._debug:
@@ -335,14 +381,12 @@ class MainFrame(MyFrame):
 
     def toggle_auto(self):
         if self.auto_entry.get():
-            self.cam2.img_out_widget = self.plate_detect_output_img
-
             self.plate_textbox.configure(state=DISABLED)
             self.barcode_textbox.configure(state=DISABLED)
             self.snap_btn.configure(state=DISABLED)
         else:
-            self.cam1.output_widget = None
-            self.cam2.img_out_widget = None
+            self.barcode_cam.output_widget = None
+            self.plate_cam.img_out_widget = None
 
             # self.plate_detect_output_img.configure(image='')
 
@@ -354,7 +398,7 @@ class MainFrame(MyFrame):
         self.stopAllThread()
         logging.info('Closing')
         # FIXME: only the main thread can call to tkinter funtion. That's why the app can freeze here
-        #  The after(200) funtion is only a bandaid fix and can fail if stopAllThread take too long
+        #  The after(200) funtion is only a bandaid fix and can fail if self.stopAllThread() take too long
         self.master.after(200, self.master.destroy)
 
 

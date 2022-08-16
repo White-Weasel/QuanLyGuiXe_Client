@@ -2,7 +2,7 @@
 import cv2
 import numpy
 from ImageProcessor import draw_boxes
-
+import barcodenumber
 BARDET = cv2.barcode_BarcodeDetector()
 
 
@@ -35,7 +35,7 @@ def readBarcode(img: numpy.ndarray) -> list[Barcode]:
             result.append(bar)
             draw_boxes(img, (bar.box,), (0, 255, 0), 2)
 
-        result = [x for x in result if x.info != '']
+        result = [x for x in result if barcodenumber.check_code('ean13', x.info)]
         pass
     return result
 

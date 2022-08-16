@@ -1,4 +1,4 @@
-import PlateDetect
+import PlateDetector
 import PlateRecognition
 import cv2
 import random
@@ -10,7 +10,7 @@ if __name__ == '__main__':
     a = 1916
     img = cv2.imread(rf"D:\Project\raw data_\yolo_plate_dataset\xemay{a}.jpg")
     while True:
-        detect_result = PlateDetect.detectPlate(img)
+        detect_result = PlateDetector.detectPlate(img)
 
         plate_img = img_crop(img, detect_result[0])
         # gray_plate_img = gray_upscale(plate_img, height=300)
