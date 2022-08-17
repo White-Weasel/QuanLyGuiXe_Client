@@ -7,7 +7,7 @@ from ImageProcessor import draw_bounding_boxes, img_crop, gray_upscale
 
 if __name__ == '__main__':
     fno = random.randint(1, 2000)
-    a = 1916
+    a = 567
     img = cv2.imread(rf"D:\Project\raw data_\yolo_plate_dataset\xemay{a}.jpg")
     while True:
         detect_result = PlateDetector.detectPlate(img)

@@ -7,12 +7,12 @@ import numpy
 import ImageProcessor.PlateDetector
 import ImageProcessor.PlateRecognition
 import ImageProcessor.BarcodeReader
-# from ImageProcessor.FacialDetect import detectFace
+import ImageProcessor.FaceDetector
 import cv2
 import imutils
 from PIL import Image, ImageTk
 import websocket
-from ImageProcessor import img_crop
+from ImageProcessor import img_crop, BoundingBox
 import logging
 
 
@@ -140,50 +140,6 @@ def print_to_text_widget(widget: Union[MyText, MyEntry], text):
     return
 
 
-class VideoFeed(MyLabel):
-    """
-    Widget to show webcam video\n
-    REMEMBER TO STOP IT PROPERLY. Use the stop_lock attribute to stop it.
-    """
-
-    def __init__(self, master: MyFrame, cap: cv2.VideoCapture, img_height: int = 250, *args, **kwargs):
-        super(VideoFeed, self).__init__(master=master, *args, **kwargs)
-        self.imgtk = None
-        try:
-            master.thread_list.append(self)
-        except AttributeError:
-            master.thread_list = [self]
-
-        self.cap = cap
-        self.img_height = img_height
-        self.stop_lock = False
-        self.thread = threading.Thread(target=self.showFrame)
-        self.thread.start()
-
-    def showFrame(self):
-        """
-        This function will be running on another thread. If you overide it,
-        code it so that setting self.stop_lock as True will stop it properly.
-        BEWARE that tkinter functions will run in the main thread so joining this thread may cause freezing.
-        """
-        """if not self.stop_lock:
-            succ, frame = self.cap.read()
-            if succ:
-                imgtk = photo_from_ndarray(frame, self.img_height)
-                setLabelImg(self, imgtk)
-
-                self.after(20, self.showFrame)
-        else:
-            self.cap.release()"""
-        return
-
-    def stop(self):
-        self.stop_lock = True
-
-    def join(self):
-        self.thread.join()
-
-
 class ImageViewer(tk.Label):
     """Widget to show a statis image"""
 
@@ -276,39 +232,52 @@ class PlateDetectWidget(ImageViewer):
             """
 
 
-class BarcodeWidget(VideoFeed):
-    """Widget to read barcode from webcam"""
+class VideoFeed(MyLabel):
+    """
+    Widget to show webcam video\n
+    REMEMBER TO STOP IT PROPERLY. Use the stop_lock attribute to stop it.
+    """
 
     def __init__(self,
-                 bool_var: tk.BooleanVar = None,
-                 auto_clear: bool = False,
+                 master: MyFrame,
+                 cap: cv2.VideoCapture,
+                 img_height: int = 250,
                  onBarcodeDetected: Callable = None,
                  onBarcodeNotDetected: Callable = None,
                  *args, **kwargs):
-        """
+        super(VideoFeed, self).__init__(master=master, *args, **kwargs)
+        self.imgtk = None
+        try:
+            master.thread_list.append(self)
+        except AttributeError:
+            master.thread_list = [self]
 
-        :param txt_out_widget: entry/text widget to print barcode to.
-        :param auto_clear: True: automaticaly clear the txt_out_widget if no barcode dected.
-        """
         self.onBarcodeNotDetectedCallback = onBarcodeNotDetected
         self.onBarcodeDetectedCallback = onBarcodeDetected
 
-        self.bool_var = bool_var
-        self.auto_clear = auto_clear
-
         self.barcodes: list[ImageProcessor.BarcodeReader.Barcode] = []
-        super(BarcodeWidget, self).__init__(*args, **kwargs)
+        self.faces: list[BoundingBox] = []
+
+        self.cap = cap
+        self.img_height = img_height
         self.stop_lock = False
+        self.thread = threading.Thread(target=self.showFrame)
+        self.thread.start()
 
     # noinspection PyAttributeOutsideInit
     def showFrame(self):
+        """
+        This function will be running on another thread.
+        BEWARE that tkinter functions will run in the main thread so joining this thread will cause freezing.
+        """
         # TODO: The self.after method will slow the app down, but the while method will cause flashing
-        while not self.stop_lock:
+        if not self.stop_lock:
             succ, self.frame = self.cap.read()
             if succ:
                 self.frame = cv2.flip(self.frame, 1)
 
-                self.barcodes = ImageProcessor.BarcodeReader.readBarcode(self.frame)
+                self.barcodes = ImageProcessor.BarcodeReader.readBarcode(self.frame, draw=True)
+                self.faces = ImageProcessor.FaceDetector.detectFace(self.frame, draw=True)
 
                 if len(self.barcodes) > 0:
                     if self.onBarcodeDetectedCallback is not None:
@@ -319,16 +288,17 @@ class BarcodeWidget(VideoFeed):
 
                 imgtk = photo_from_ndarray(self.frame, self.img_height)
                 setLabelImg(self, imgtk)
-            # self.after(20, self.showFrame)
-        self.cap.release()
-        print('closed cap')
-        logging.info('Closed cv2 cap')
+            self.after(5, self.showFrame)
+        else:
+            self.cap.release()
+            print('closed cap')
+            logging.info('Closed cv2 cap')
 
-    def onbarcodeDetected(self, func):
-        self.onBarcodeDetectedCallback = func
+    def stop(self):
+        self.stop_lock = True
 
-    def onbarcodeNotDetected(self, func):
-        self.onBarcodeNotDetectedCallback = func
+    def join(self):
+        self.thread.join()
 
 
 # noinspection PyUnusedLocal,PyMethodMayBeStatic

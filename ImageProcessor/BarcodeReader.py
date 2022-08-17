@@ -16,10 +16,11 @@ class Barcode:
         return f"{self.info} at {self.box}"
 
 
-def readBarcode(img: numpy.ndarray) -> list[Barcode]:
+def readBarcode(img: numpy.ndarray, draw=True) -> list[Barcode]:
     """
     Read barcode from image
 
+    :param draw: True: draw bounding boxes
     :param img: input image
     :return: list of barcodes read from image
     """
@@ -33,7 +34,8 @@ def readBarcode(img: numpy.ndarray) -> list[Barcode]:
         for i in range(0, len(decoded_type)):
             bar = Barcode(decoded_info[i], decoded_type[i], corners_to_rectangle(corners[i]))
             result.append(bar)
-            draw_boxes(img, (bar.box,), (0, 255, 0), 2)
+            if draw:
+                draw_boxes(img, (bar.box,), (50, 0, 255), 2)
 
         result = [x for x in result if barcodenumber.check_code('ean13', x.info)]
         pass

@@ -4,12 +4,15 @@ from . import BACKEND_URL
 
 
 class ParkingInfo:
-    def __init__(self, ticket, plate, time_in=None, time_out=None, face=None):
+    def __init__(self, plate, ticket=None, time_in=None, time_out=None, face=None):
         self.face = face
         self.time_out = time_out
         self.time_in = time_in
         self.plate = plate
         self.ticket = ticket
+
+        if ticket == '':
+            self.ticket = None
 
         if self.time_in is None:
             self.time_in = datetime.datetime.now()

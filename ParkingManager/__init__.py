@@ -163,9 +163,9 @@ class MainFrame(MyFrame):
         self.l1.pack(anchor=NW)
         # default capture backend cause warning when closed. cv2.CAP_DSHOW backend does not
         cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
-        self.barcode_cam = BarcodeWidget(master=self.face_cam_frame, cap=cap, img_height=self.CAMERA_HEIGHT,
-                                         bool_var=self.barcode_read, onBarcodeDetected=self.onBarcodeDetected)
-        self.barcode_cam.pack(anchor=CENTER)
+        self.main_cam = VideoFeed(master=self.face_cam_frame, cap=cap, img_height=self.CAMERA_HEIGHT,
+                                  onBarcodeDetected=self.onBarcodeDetected)
+        self.main_cam.pack(anchor=CENTER)
 
         self.l2 = MyLabel(self.plate_cam_frame, text="Camera 2")
         self.l2.pack(side=TOP, anchor=NW)
@@ -175,7 +175,6 @@ class MainFrame(MyFrame):
                                            img_height=self.CAMERA_HEIGHT)
 
         def set_random_plate_img(i: int = None):
-            # TODO: get img in new thread
             def thread_target():
                 if i is None:
                     a = random.randint(0, 2000)
@@ -199,14 +198,11 @@ class MainFrame(MyFrame):
         self.b1.pack(side=BOTTOM)
 
         """Entry Control frame"""
-        # TODO: do smt with this btn
-        """
         self.snap_btn = MyButton(self.entry_control_btns_frame,
                                  text="Chup anh",
                                  height=3, width=15,
-                                 state=DISABLED)
+                                 command=self.snap)
         self.snap_btn.pack(side=TOP, pady=5)
-        """
 
         self.clear_btn = MyButton(self.entry_control_btns_frame,
                                   text='Clear',
@@ -222,7 +218,7 @@ class MainFrame(MyFrame):
                                 height=DEFAULT_BTN_HEIGHT, width=DEFAULT_BTN_WIDTH,
                                 command=self.vehicle_out)
         self.out_btn.pack(side=TOP, pady=5)
-        """
+
         self.auto_checkbox = tk.Checkbutton(self.entry_control_btns_frame,
                                             text="Tu dong gui",
                                             variable=self.auto_entry,
@@ -231,7 +227,6 @@ class MainFrame(MyFrame):
                                             command=partial(self.toggle_auto))
         self.auto_checkbox.select()
         self.auto_checkbox.pack(side=TOP)
-        """
 
         """
         self.gate_status_frame = MyFrame(self.img_detect_result_frame, name='gate status', borderwidth=1)
@@ -267,29 +262,51 @@ class MainFrame(MyFrame):
         self.pack(fill=BOTH, expand=YES, padx=25, pady=25)
 
     def onBarcodeDetected(self):
-        if self.barcode_cam.barcodes[0].info != self.cur_barcode:
-            self.clear_parking_info()
+        # TODO: change it to selected barcode
+        if self.main_cam.barcodes[0].info != self.cur_barcode:
             utls.beep_beep()
-            self.cur_barcode = self.barcode_cam.barcodes[0].info
             self.barcode_read.set(True)
-            print_to_text_widget(self.plate_textbox, self.plate_cam.plate_list[0])
+            self.snap()
 
-            for pimg in self.plate_cam.plate_imgs:
-                i = ImageViewer(self.plate_images_frame, height=DEFAULT_IMG_HEIGHT)
-                i.set_img(pimg)
-                i.pack(side=LEFT)
+    def snap(self):
+        self.clear_parking_info()
+        if len(self.main_cam.barcodes) > 0:
+            self.cur_barcode = self.main_cam.barcodes[0].info
+        else:
+            self.cur_barcode = None
+        plate = self.plate_cam.plate_list[0]
+        print_to_text_widget(self.plate_textbox, plate[:2] + '-' + plate[2:4] + '-' + plate[4:])
+
+        for pimg in self.plate_cam.plate_imgs:
+            i = ImageViewer(self.plate_images_frame, height=DEFAULT_IMG_HEIGHT)
+            i.set_img(pimg)
+            i.pack(side=LEFT)
+
+        face_imgs = [img_crop(self.main_cam.frame, f.box, True) for f in self.main_cam.faces]
+        for fimg in face_imgs:
+            i = ImageViewer(self.face_images_frame, height=DEFAULT_IMG_HEIGHT)
+            i.set_img(fimg)
+            i.pack(side=LEFT)
 
     def parking_info(self) -> ParkingInfo:
         # TODO: use selected info
-        plate = self.plate_cam.plate_list[0]
+        plate = self.plate_textbox.get()
+        if len(plate) < 1:
+            plate = None
+        else:
+            plate = plate.replace('-', '')
         ticket = self.cur_barcode
-        return ParkingInfo(ticket, plate)
+        result = ParkingInfo(ticket=ticket, plate=plate)
+        print(result)
+        return result
 
     def clear_parking_info(self):
         self.cur_barcode = ''
         for txtw in self.all_text_widget():
             print_to_text_widget(txtw, '')
         for i in self.plate_images_frame.img_list:
+            i.destroy()
+        for i in self.face_images_frame.img_list:
             i.destroy()
 
     def print_api_output(self, text):
@@ -382,16 +399,9 @@ class MainFrame(MyFrame):
     def toggle_auto(self):
         if self.auto_entry.get():
             self.plate_textbox.configure(state=DISABLED)
-            self.barcode_textbox.configure(state=DISABLED)
             self.snap_btn.configure(state=DISABLED)
         else:
-            self.barcode_cam.output_widget = None
-            self.plate_cam.img_out_widget = None
-
-            # self.plate_detect_output_img.configure(image='')
-
             self.plate_textbox.configure(state=NORMAL)
-            self.barcode_textbox.configure(state=NORMAL)
             self.snap_btn.configure(state=NORMAL)
 
     def on_closing(self):

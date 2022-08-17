@@ -10,7 +10,12 @@ import numpy
 
 
 class BoundingBox:
-    def __init__(self, box, label):
+    def __init__(self, box, label, yolo_format=True):
+        """
+        :param box: RELATIVE box
+        :param label:
+        """
+        self.yolo_format = yolo_format
         (self.x, self.y, self.w, self.h) = box
         """self.x = int(x)
         self.y = int(y)
@@ -33,7 +38,7 @@ class BoundingBox:
         return box
 
     def draw(self, img: numpy.ndarray, color=(50, 50, 255), *args, **kwargs):
-        a_boxes = absolute_size_from_relative_size([self.box, ], img.shape[:2])[0]
+        a_boxes = absolute_size_from_relative_size([self.box, ], img.shape[:2], self.yolo_format)[0]
         draw_boxes(img, [a_boxes, ], color, *args, **kwargs)
         cv2.putText(img, self.label, (a_boxes[0], a_boxes[1]), cv2.FONT_HERSHEY_PLAIN, 2, color, 2)
 
@@ -78,13 +83,17 @@ def img_from_url(url: str):
     return img
 
 
-def absolute_size_from_relative_size(input_arr, size):
+def absolute_size_from_relative_size(input_arr, size, yolo_format=True):
     result = []
     (H, W) = size
     for box in input_arr:
         (x, y, w, h) = box
-        x = int((x - w / 2) * W)
-        y = int((y - h / 2) * H)
+        if yolo_format:
+            x = int((x - w / 2) * W)
+            y = int((y - h / 2) * H)
+        else:
+            x = int(x * W)
+            y = int(y * H)
         w = int(w * W)
         h = int(h * H)
         result.append([x, y, w, h])
@@ -105,7 +114,17 @@ def draw_boxes(img, boxes, *args, **kwargs):
             cv2.putText(img, label, (x, y), cv2.FONT_HERSHEY_PLAIN, 2, (50, 50, 255), 2)
 
 
-def img_crop(img: numpy.ndarray, crop_area) -> numpy.ndarray:
+def img_crop(img: numpy.ndarray, crop_area, relative=False, yolo_format=False) -> numpy.ndarray:
+    """
+    Crop an image
+    :param yolo_format:
+    :param relative:
+    :param img:
+    :param crop_area: absolute size
+    :return:
+    """
+    if relative:
+        crop_area = absolute_size_from_relative_size([crop_area, ], img.shape[:2], yolo_format)[0]
     (x, y, w, h) = crop_area
     x1 = x + w
     y1 = y + h
