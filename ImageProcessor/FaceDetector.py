@@ -6,7 +6,7 @@ from ImageProcessor import BoundingBox
 import cv2
 import mediapipe as mp
 
-MIN_CONFIDENCE = 0.5
+MIN_CONFIDENCE = 0.8
 
 mp_face_detection = mp.solutions.face_detection
 mp_drawing = mp.solutions.drawing_utils
@@ -27,13 +27,15 @@ def detectFace(img: numpy.ndarray,
     result = []
     if detect_result.detections:
         for detect in detect_result.detections:
-            face = detect.location_data.relative_bounding_box
-            b = BoundingBox((face.xmin, face.ymin, face.width, face.height), '',
-                            yolo_format=False)
-            if draw:
-                # mp_drawing.draw_detection(img, detection)
-                b.draw(img, (0, 255, 0), 2)
-            result.append(b)
+            if float(detect.score[0]) > MIN_CONFIDENCE:
+                face = detect.location_data.relative_bounding_box
+                b = BoundingBox((face.xmin, face.ymin, face.width, face.height), '',
+                                #str(detect.score[0]),
+                                yolo_format=False)
+                if draw:
+                    # mp_drawing.draw_detection(img, detection)
+                    b.draw(img, (0, 255, 0), 2)
+                result.append(b)
     return result
 
 
