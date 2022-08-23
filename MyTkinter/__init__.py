@@ -271,7 +271,7 @@ class VideoFeed(MyLabel):
         BEWARE that tkinter functions will run in the main thread so joining this thread will cause freezing.
         """
         # TODO: The self.after method will slow the app down, but the while method will cause flashing
-        if not self.stop_lock:
+        while not self.stop_lock:
             succ, self.frame = self.cap.read()
             if succ:
                 self.frame = cv2.flip(self.frame, 1)
@@ -288,7 +288,7 @@ class VideoFeed(MyLabel):
 
                 imgtk = photo_from_ndarray(self.frame, self.img_height)
                 setLabelImg(self, imgtk)
-            self.after(5, self.showFrame)
+            # self.after(20, self.showFrame)
         else:
             self.cap.release()
             print('closed cap')

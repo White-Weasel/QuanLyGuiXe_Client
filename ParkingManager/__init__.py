@@ -2,7 +2,6 @@ import datetime
 import threading
 import tkinter
 from functools import partial
-
 import utls
 from MyTkinter import *
 import random
@@ -21,8 +20,8 @@ DEFAULT_BTN_HEIGHT = 3
 DEFAULT_BTN_WIDTH = 15
 DEFAULT_IMG_HEIGHT = 100
 BACKEND_URL = '127.0.0.1:8000'
-DEFAULT_FONT = 'TkTextFont 14'
-DEFAULT_BIG_FONT = 'TkTextFont 16'
+DEFAULT_FONT = 'TkTextFont 11'
+DEFAULT_BIG_FONT = 'TkTextFont 14'
 from .Parking import ParkingInfo
 
 
@@ -36,36 +35,70 @@ def random_rgb():
     return from_rgb((r, g, b))
 
 
-class GUI(tkinter.Tk):
+def print_api_output(widget, text):
+    widget.configure(text=text, fg='blue')
+
+
+def print_backend_err(widget, text):
+    widget.configure(text=text, fg='red')
+
+
+class GUI(tkinter.Tk, metaclass=utls.Singleton):
     """Import this in main script"""
 
     def __init__(self, *args, **kwargs):
         super(GUI, self).__init__(*args, **kwargs)
-        self.mainFrame = MainFrame(self)
-        self.mainloop()
-
-
-class ParkingManager:
-    def __init__(self):
-        pass
-
-
-# noinspection PyAttributeOutsideInit
-class MainFrame(MyFrame):
-    def __init__(self, master: tk.Tk, *args, **kwargs):
-        super().__init__(master, *args, **kwargs)
         logging.info('\n\nInitializing app')
+        random.seed(datetime.datetime.now().timestamp())
 
         """Key event example"""
 
         def handle_keypress(event: tk.Event):
             if event.keycode == 27:
-                self.on_closing()
+                # self.on_closing()
+                pass
 
-        master.title("Quan ly gui tra xe")
-        master.geometry('1000x700+250+30')
-        master.bind("<Key>", handle_keypress)
+        self.title("Quan ly gui tra xe")
+        # self.geometry('1000x700+250+30')
+        self.geometry("")
+        self.minsize(1000, 700)
+        self.bind("<Key>", handle_keypress)
+
+        self.mainFrame = MainFrame(self)
+
+        def search():
+            SearchWindow(name='search info')
+
+        menubar = Menu(self)
+        filemenu = Menu(menubar, tearoff=0)
+        filemenu.add_command(label="Search", command=search)
+        filemenu.add_command(label="Report")
+        filemenu.add_command(label="Save")
+        filemenu.add_separator()
+        filemenu.add_command(label="Exit", command=self.quit)
+        menubar.add_cascade(label="File", menu=filemenu)
+
+        viewmenu = Menu(menubar, tearoff=0)
+        viewmenu.add_command(label="Debug mode", command=partial(self.mainFrame.toggle_debug))
+        menubar.add_cascade(label="View", menu=viewmenu)
+
+        self.config(menu=menubar)
+        self.after(10, self.mainFrame.home)
+        self.mainloop()
+
+
+# noinspection PyAttributeOutsideInit
+class MainFrame(MyFrame, metaclass=utls.Singleton):
+    def __init__(self, master: tk.Tk, *args, **kwargs):
+        super().__init__(master, *args, **kwargs)
+
         master.protocol('WM_DELETE_WINDOW', self.on_closing)
+
+        # noinspection PyUnusedLocal
+        def test_des(event=None):
+            print("destroying")
+
+        self.bind("<Destroy>", test_des)
 
         self._debug = False
         self.CAMERA_HEIGHT = 250
@@ -73,24 +106,6 @@ class MainFrame(MyFrame):
         self.auto_entry = tk.BooleanVar()
         self.barcode_read = tkinter.BooleanVar()
         self.cur_barcode = ''
-
-        menubar = Menu(master)
-        filemenu = Menu(menubar, tearoff=0)
-        filemenu.add_command(label="New", command=self.home)
-        filemenu.add_command(label="Open")
-        filemenu.add_command(label="Save")
-        filemenu.add_separator()
-        filemenu.add_command(label="Exit", command=master.quit)
-        menubar.add_cascade(label="File", menu=filemenu)
-
-        viewmenu = Menu(menubar, tearoff=0)
-        viewmenu.add_command(label="Debug mode", command=partial(self.toggle_debug))
-        menubar.add_cascade(label="View", menu=viewmenu)
-
-        master.config(menu=menubar)
-
-        random.seed(datetime.datetime.now().timestamp())
-        master.after(10, self.home)
 
     def home(self):
         """Frames initialize"""
@@ -113,7 +128,7 @@ class MainFrame(MyFrame):
         self.img_detect_result_frame.pack(fill=BOTH, expand=1, side=BOTTOM)
 
         self.txt_detect_result_frame = MyFrame(self.entry_control_frame, name='detect results')
-        self.txt_detect_result_frame.pack(side=LEFT, fill=BOTH, expand=YES, pady=10)
+        self.txt_detect_result_frame.pack(side=LEFT, fill=BOTH, pady=10)
 
         self.entry_control_btns_frame = MyFrame(self.entry_control_frame, name='entry control btns')
         self.entry_control_btns_frame.pack(side=RIGHT, fill=BOTH, expand=YES)
@@ -123,14 +138,14 @@ class MainFrame(MyFrame):
         """
         # self.plate_num_result_frame = MyFrame(self.txt_result_frame, name='plate_num')
         # self.plate_num_result_frame.pack(side=TOP, fill=X, expand=YES)
-        self.l3 = MyLabel(self.txt_detect_result_frame, text="Bien so: ")
+        self.l3 = MyLabel(self.txt_detect_result_frame, text="Bien so: ", font=DEFAULT_FONT)
         self.l3.grid(row=1, column=1)
         self.plate_textbox = MyEntry(self.txt_detect_result_frame, state=DISABLED, font=DEFAULT_BIG_FONT)
         self.plate_textbox.grid(row=1, column=2)
 
         # self.barcode_detect_result_frame = MyFrame(self.txt_result_frame, name='barcode')
         # self.barcode_detect_result_frame.pack(fill=X, side=BOTTOM)
-        # self.l4 = MyLabel(self.txt_detect_result_frame, text="Ma ve: ")
+        # self.l4 = MyLabel(self.txt_detect_result_frame, text="Ma ve: ", font=DEFAULT_FONT)
         # self.l4.grid(row=2, column=1)
         # self.barcode_textbox = MyEntry(self.txt_detect_result_frame, state=DISABLED, font=DEFAULT_BIG_FONT)
         # self.barcode_textbox.grid(row=2, column=2)
@@ -148,18 +163,18 @@ class MainFrame(MyFrame):
         """self.img_result_frame = MyFrame(self.txt_detect_result_frame, name='img_result_frame')
         self.img_result_frame.pack(fill=BOTH, pady=7, side=TOP)"""
 
-        self.l5 = MyLabel(self.img_detect_result_frame, text='Anh bien so: ')
+        self.l5 = MyLabel(self.img_detect_result_frame, text='Anh bien so: ', font=DEFAULT_FONT)
         self.l5.grid(row=1, column=1, sticky=W)
         self.plate_images_frame = MyFrame(self.img_detect_result_frame, height=DEFAULT_IMG_HEIGHT)
         self.plate_images_frame.grid(row=1, column=2)
 
-        self.l6 = MyLabel(self.img_detect_result_frame, text='Anh khuon mat: ')
+        self.l6 = MyLabel(self.img_detect_result_frame, text='Anh khuon mat: ', font=DEFAULT_FONT)
         self.l6.grid(row=2, column=1, sticky=W)
         self.face_images_frame = MyFrame(self.img_detect_result_frame, height=DEFAULT_IMG_HEIGHT)
         self.face_images_frame.grid(row=2, column=2)
 
         """Cam frames widgets"""
-        self.l1 = MyLabel(self.face_cam_frame, text="Camera 1")
+        self.l1 = MyLabel(self.face_cam_frame, text="Camera 1", font=DEFAULT_FONT)
         self.l1.pack(anchor=NW)
         # default capture backend cause warning when closed. cv2.CAP_DSHOW backend does not
         cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
@@ -167,7 +182,7 @@ class MainFrame(MyFrame):
                                   onBarcodeDetected=self.onBarcodeDetected)
         self.main_cam.pack(anchor=CENTER)
 
-        self.l2 = MyLabel(self.plate_cam_frame, text="Camera 2")
+        self.l2 = MyLabel(self.plate_cam_frame, text="Camera 2", font=DEFAULT_FONT)
         self.l2.pack(side=TOP, anchor=NW)
 
         # FIXME: PlateProcess.py predicts this differently
@@ -194,28 +209,29 @@ class MainFrame(MyFrame):
         self.plate_cam.pack(side=TOP)
 
         self.b1 = MyButton(self.plate_cam_frame, text='Next random img', height=2,
-                           command=partial(set_random_plate_img))
+                           command=partial(set_random_plate_img),
+                           font=DEFAULT_FONT)
         self.b1.pack(side=BOTTOM)
 
         """Entry Control frame"""
         self.snap_btn = MyButton(self.entry_control_btns_frame,
                                  text="Chup anh",
                                  height=3, width=15,
-                                 command=self.snap)
+                                 command=self.snap, font=DEFAULT_FONT)
         self.snap_btn.pack(side=TOP, pady=5)
 
         self.clear_btn = MyButton(self.entry_control_btns_frame,
                                   text='Clear',
                                   height=DEFAULT_BTN_HEIGHT, width=DEFAULT_BTN_WIDTH,
-                                  command=self.clear_parking_info)
+                                  command=self.clear_parking_info, font=DEFAULT_FONT)
         self.clear_btn.pack(side=TOP, pady=5)
 
         self.enter_btn = MyButton(self.entry_control_btns_frame, text='Gui xe',
-                                  height=DEFAULT_BTN_HEIGHT, width=DEFAULT_BTN_WIDTH,
+                                  height=DEFAULT_BTN_HEIGHT, width=DEFAULT_BTN_WIDTH, font=DEFAULT_FONT,
                                   command=self.vehicle_entry)
         self.enter_btn.pack(side=TOP, pady=5)
         self.out_btn = MyButton(self.entry_control_btns_frame, text='Tra xe',
-                                height=DEFAULT_BTN_HEIGHT, width=DEFAULT_BTN_WIDTH,
+                                height=DEFAULT_BTN_HEIGHT, width=DEFAULT_BTN_WIDTH, font=DEFAULT_FONT,
                                 command=self.vehicle_out)
         self.out_btn.pack(side=TOP, pady=5)
 
@@ -231,7 +247,7 @@ class MainFrame(MyFrame):
         """
         self.gate_status_frame = MyFrame(self.img_detect_result_frame, name='gate status', borderwidth=1)
         self.gate_status_frame.pack(expand=YES, side=TOP, anchor=N)
-        self.gate_label = MyLabel(self.gate_status_frame, text="Trang thai cong: ")
+        self.gate_label = MyLabel(self.gate_status_frame, text="Trang thai cong: ", font=DEFAULT_FONT)
         self.gate_label.pack(side=LEFT)
         self.gate_status_label = GateStatusWidget(self.gate_status_frame,
                                                   text="",
@@ -295,7 +311,7 @@ class MainFrame(MyFrame):
             plate = None
         else:
             plate = plate.replace('-', '')
-        ticket = self.cur_barcode
+        ticket = int(self.cur_barcode)
         result = ParkingInfo(ticket=ticket, plate=plate)
         print(result)
         return result
@@ -309,12 +325,6 @@ class MainFrame(MyFrame):
         for i in self.face_images_frame.img_list:
             i.destroy()
 
-    def print_api_output(self, text):
-        self.out_label.configure(text=text, fg='blue')
-
-    def print_backend_err(self, text):
-        self.out_label.configure(text=text, fg='red')
-
     def vehicle_entry(self):
         """Send data to server. Process data and show result"""
 
@@ -325,17 +335,17 @@ class MainFrame(MyFrame):
                 res = result.json()
                 logging.info(f"Get vehicle {data.plate} inside with ticket {res['ticket']}")
                 if res['result']:
-                    self.print_api_output(f"Gui xe thanh cong!\nBien so:{data.plate}")
+                    print_api_output(self.out_label, f"Gui xe thanh cong!\nBien so:{data.plate}")
                 else:
-                    self.print_api_output(f"Gui xe khong thanh cong")
+                    print_api_output(self.out_label, f"Gui xe khong thanh cong")
             elif result.status_code / 100 == 5:
                 try:
                     res = result.json()
-                    self.print_backend_err(res['err'])
+                    print_backend_err(self.out_label, res['err'])
                 except requests.exceptions.JSONDecodeError:
-                    self.print_backend_err(f"Loi {result.status_code}: {str(result.content)}")
+                    print_backend_err(self.out_label, f"Loi {result.status_code}: {str(result.content)}")
             elif result.status_code == 422:
-                self.print_backend_err("Thong tin khong hop le")
+                print_backend_err(self.out_label, "Thong tin khong hop le")
             else:
                 print(f'error: {result.content}')
                 logging.info(f'error: {result.content}')
@@ -355,17 +365,18 @@ class MainFrame(MyFrame):
                 res = result.json()
                 logging.info(f"Get vehicle {data.plate} out with ticket {data.ticket}")
                 if res['result']:
-                    self.print_api_output(f"Tra xe thanh cong!\nBien so:{data.plate}\nGia gui xe:{res['cost']}")
+                    print_api_output(self.out_label,
+                                     f"Tra xe thanh cong!\nBien so:{data.plate}\nGia gui xe:{res['cost']}")
                 else:
-                    self.print_backend_err(f"Tra xe khong thanh cong")
+                    print_backend_err(self.out_label, f"Tra xe khong thanh cong")
             elif result.status_code / 100 == 5:
                 try:
                     res = result.json()
-                    self.print_backend_err(res['err'])
+                    print_backend_err(self.out_label, res['err'])
                 except requests.exceptions.JSONDecodeError:
-                    self.print_backend_err(f"Loi {result.status_code}: {str(result.content)}")
+                    print_backend_err(self.out_label, f"Loi {result.status_code}: {str(result.content)}")
             elif result.status_code == 422:
-                self.print_backend_err("Thong tin khong hop le")
+                print_backend_err(self.out_label, "Thong tin khong hop le")
             else:
                 print(f'error: {result.content}')
                 logging.info(f'error: {result.content}')
@@ -407,13 +418,120 @@ class MainFrame(MyFrame):
     def on_closing(self):
         self.stopAllThread()
         logging.info('Closing')
+        print('closing main')
         # FIXME: only the main thread can call to tkinter funtion. That's why the app can freeze here
         #  The after(200) funtion is only a bandaid fix and can fail if self.stopAllThread() take too long
         self.master.after(200, self.master.destroy)
 
 
-if __name__ == '__main__':
-    root = tk.Tk()
+class SearchWindow(tk.Toplevel):
+    def __init__(self, *args, **kwargs):
+        super(SearchWindow, self).__init__(*args, **kwargs)
+        self.title('Tim kiem xe')
+        self.geometry("")
+        self._debug = False
 
-    window = MainFrame(root, name="main frame")
-    window.mainloop()
+        menubar = Menu(self)
+        viewmenu = Menu(menubar, tearoff=0)
+        viewmenu.add_command(label="Debug mode", command=partial(self.toggle_debug))
+        menubar.add_cascade(label="View", menu=viewmenu)
+        self.config(menu=menubar)
+
+        """Initialize frames"""
+        self.mainframe = MyFrame(self, name='main search frame')
+        self.mainframe.pack(fill=BOTH, expand=YES)
+        self.result_frame = MyFrame(self.mainframe, name='search result frame')
+        self.result_frame.pack(side=LEFT, expand=YES, fill=BOTH, padx=5, pady=5)
+        self.input_frame = MyFrame(self.mainframe, name='search input frame')
+        self.input_frame.pack(side=RIGHT, fill=BOTH, padx=5, pady=5)
+
+        self.l1 = MyLabel(self.input_frame, text='Bien so: ', font=DEFAULT_FONT)
+        self.l1.grid(row=1, column=1, sticky=W, padx=10)
+        self.plate_txtbox = MyEntry(self.input_frame)
+        self.plate_txtbox.grid(row=1, column=2, sticky=W)
+
+        self.search_btn = MyButton(self.input_frame,
+                                   text='Tim kiem xe',
+                                   height=DEFAULT_BTN_HEIGHT,
+                                   command=self.search, font=DEFAULT_FONT)
+        self.search_btn.grid(row=3, column=1, columnspan=2, pady=10)
+
+        self.default_frame_color = []
+        for f in get_all_child_frames(self.mainframe):
+            self.default_frame_color.append(f.cget("background"))
+
+    def toggle_debug(self):
+        """Toggle frame backgroud color, used to check widget size and location"""
+
+        self._debug = not self._debug
+        """Toggle help tooltips"""
+        for f in get_all_child_frames(self.mainframe):
+            if self._debug:
+                f.toolTip.bind()
+            else:
+                f.toolTip.unbind()
+
+        """Toggle frame bg color"""
+        if self._debug:
+            for frame in get_all_child_frames(self.mainframe):
+                frame.configure(bg=random_rgb())
+        else:
+            for frame, color in zip(get_all_child_frames(self.mainframe), self.default_frame_color):
+                frame.configure(bg=color)
+
+    def get_info(self):
+        plate = self.plate_txtbox.get()
+        info = ParkingInfo(plate=plate)
+        return info
+
+    def clear_result(self):
+        for c in self.result_frame.winfo_children():
+            c.destroy()
+
+    def search(self):
+        self.clear_result()
+
+        info = self.get_info()
+        result = info.search()
+
+        if result.status_code / 100 == 2:
+            result = result.json()
+            self.show_result(result['data'])
+        elif result.status_code / 100 == 5:
+            out_label = MyLabel(self.result_frame, font=DEFAULT_FONT)
+            out_label.pack(side=TOP, anchor=N, expand=YES)
+            try:
+                result = result.json()
+                print_backend_err(out_label, result['err'])
+            except requests.exceptions.JSONDecodeError:
+                print_backend_err(out_label, result.content)
+
+    def show_result(self, result: list[dict]):
+        """
+        Print search result if status code is 200
+        :param result:
+        :return:
+        """
+        if len(result) < 1:
+            out_label = MyLabel(self.result_frame, font=DEFAULT_FONT)
+            out_label.pack(side=TOP, anchor=N, expand=YES)
+            print_api_output(out_label, 'Khong co thong tin gui xe tuong ung')
+        else:
+            c = 0
+            for key in result[0].keys():
+                title_label = MyLabel(self.result_frame, text=key, borderwidth=1, relief="solid", font=DEFAULT_BIG_FONT)
+                title_label.grid(row=0, column=c, sticky="nsew", padx=2)
+                c += 1
+
+        r = 0
+        for info in result:
+            c = 0
+            r += 1
+            for value in info.values():
+                value_label = MyLabel(self.result_frame, text=str(value), font=DEFAULT_FONT)
+                value_label.grid(row=r, column=c, sticky="nsew", padx=2, pady=2)
+                c += 1
+
+
+if __name__ == '__main__':
+    window = GUI()
