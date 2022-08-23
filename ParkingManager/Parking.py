@@ -4,7 +4,7 @@ from . import BACKEND_URL
 
 
 class ParkingInfo:
-    def __init__(self, plate: str,
+    def __init__(self, plate: str = None,
                  ticket: int = None,
                  time_in: datetime.datetime = None,
                  time_out: datetime.datetime = None,
@@ -21,7 +21,7 @@ class ParkingInfo:
             'inside': inside,
             'face': face,
         }
-    
+
     def __getattr__(self, item):
         return self._data[item]
 

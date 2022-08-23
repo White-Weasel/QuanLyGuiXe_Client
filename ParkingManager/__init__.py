@@ -1,5 +1,4 @@
 import datetime
-import threading
 import tkinter
 from functools import partial
 import utls
@@ -11,8 +10,8 @@ import logging
 
 logging.basicConfig(filename='parking.log',
                     filemode='a',
-                    format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
-                    datefmt='%H:%M:%S',
+                    format='%(asctime)s %(name)s %(levelname)s %(message)s',
+                    datefmt="%Y-%m-%d %H:%M:%S",
                     level=logging.DEBUG)
 
 COLORS = ["red", "orange", "yellow", "green", "blue", "violet", "black", ]
@@ -26,7 +25,6 @@ from .Parking import ParkingInfo
 
 
 # TODO: click result img to choose which barcode/plate to use
-# TODO: MVC
 def random_rgb():
     r = random.randint(0, 250)
     g = random.randint(0, 250)
@@ -48,7 +46,8 @@ class GUI(tkinter.Tk, metaclass=utls.Singleton):
 
     def __init__(self, *args, **kwargs):
         super(GUI, self).__init__(*args, **kwargs)
-        logging.info('\n\nInitializing app')
+        logging.info('\n\n')
+        logging.info('Initializing app')
         random.seed(datetime.datetime.now().timestamp())
 
         """Key event example"""
@@ -69,11 +68,13 @@ class GUI(tkinter.Tk, metaclass=utls.Singleton):
         def search():
             SearchWindow(name='search info')
 
+        def report():
+            ReportWindow(name='report')
+
         menubar = Menu(self)
         filemenu = Menu(menubar, tearoff=0)
         filemenu.add_command(label="Search", command=search)
-        filemenu.add_command(label="Report")
-        filemenu.add_command(label="Save")
+        filemenu.add_command(label="Report", command=report)
         filemenu.add_separator()
         filemenu.add_command(label="Exit", command=self.quit)
         menubar.add_cascade(label="File", menu=filemenu)
@@ -419,8 +420,9 @@ class MainFrame(MyFrame, metaclass=utls.Singleton):
         self.stopAllThread()
         logging.info('Closing')
         print('closing main')
-        # FIXME: only the main thread can call to tkinter funtion. That's why the app can freeze here
-        #  The after(200) funtion is only a bandaid fix and can fail if self.stopAllThread() take too long
+        # FIXME: only the main thread can call to tkinter funtion.
+        #  That's why the app can freeze here if we use join().
+        #  The after(200) funtion is only a bandaid fix and might fail if self.stopAllThread() take too long
         self.master.after(200, self.master.destroy)
 
 
@@ -429,6 +431,7 @@ class SearchWindow(tk.Toplevel):
         super(SearchWindow, self).__init__(*args, **kwargs)
         self.title('Tim kiem xe')
         self.geometry("")
+        self.minsize(600, 250)
         self._debug = False
 
         menubar = Menu(self)
@@ -447,7 +450,7 @@ class SearchWindow(tk.Toplevel):
 
         self.l1 = MyLabel(self.input_frame, text='Bien so: ', font=DEFAULT_FONT)
         self.l1.grid(row=1, column=1, sticky=W, padx=10)
-        self.plate_txtbox = MyEntry(self.input_frame)
+        self.plate_txtbox = MyEntry(self.input_frame, font=DEFAULT_FONT)
         self.plate_txtbox.grid(row=1, column=2, sticky=W)
 
         self.search_btn = MyButton(self.input_frame,
@@ -494,6 +497,107 @@ class SearchWindow(tk.Toplevel):
         info = self.get_info()
         result = info.search()
 
+        if result.status_code / 100 == 2:
+            result = result.json()
+            self.show_result(result['data'])
+        elif result.status_code / 100 == 5:
+            out_label = MyLabel(self.result_frame, font=DEFAULT_FONT)
+            out_label.pack(side=TOP, anchor=N, expand=YES)
+            try:
+                result = result.json()
+                print_backend_err(out_label, result['err'])
+            except requests.exceptions.JSONDecodeError:
+                print_backend_err(out_label, result.content)
+
+    def show_result(self, result: list[dict]):
+        """
+        Print search result if status code is 200
+        :param result:
+        :return:
+        """
+        if len(result) < 1:
+            out_label = MyLabel(self.result_frame, font=DEFAULT_FONT)
+            out_label.pack(side=TOP, anchor=N, expand=YES)
+            print_api_output(out_label, 'Khong co thong tin gui xe tuong ung')
+        else:
+            c = 0
+            for key in result[0].keys():
+                title_label = MyLabel(self.result_frame, text=key, borderwidth=1, relief="solid", font=DEFAULT_BIG_FONT)
+                title_label.grid(row=0, column=c, sticky="nsew", padx=2)
+                c += 1
+
+        r = 0
+        for info in result:
+            c = 0
+            r += 1
+            for value in info.values():
+                value_label = MyLabel(self.result_frame, text=str(value), font=DEFAULT_FONT)
+                value_label.grid(row=r, column=c, sticky="nsew", padx=2, pady=2)
+                c += 1
+
+
+class ReportWindow(Toplevel):
+    def __init__(self, *args, **kwargs):
+        super(ReportWindow, self).__init__(*args, **kwargs)
+
+        self.title('Bao cao')
+        self.geometry("")
+        self.minsize(600, 250)
+        self._debug = False
+
+        menubar = Menu(self)
+        viewmenu = Menu(menubar, tearoff=0)
+        viewmenu.add_command(label="Debug mode", command=partial(self.toggle_debug))
+        menubar.add_cascade(label="View", menu=viewmenu)
+        self.config(menu=menubar)
+
+        """Initicalize frames"""
+        self.mainFrame = MyFrame(self)
+        self.mainFrame.pack(fill=BOTH, expand=YES)
+
+        self.result_frame = MyFrame(self.mainFrame, borderwidth=1, relief='solid')
+        self.result_frame.pack(side=LEFT, fill=BOTH, expand=YES, padx=5, pady=5)
+        self.input_frame = MyFrame(self.mainFrame)
+        self.input_frame.pack(side=RIGHT, fill=BOTH, pady=5, padx=5)
+
+        """widget inistialize"""
+        self.vehicle_inside_btn = MyButton(self.input_frame, text='Xe trong bai',
+                                           font=DEFAULT_FONT, height=DEFAULT_BTN_HEIGHT,
+                                           command=self.vehicle_inside)
+        self.vehicle_inside_btn.pack(pady=5)
+
+        self.default_frame_color = []
+        for f in get_all_child_frames(self.mainFrame):
+            self.default_frame_color.append(f.cget("background"))
+
+    def toggle_debug(self):
+        """Toggle frame backgroud color, used to check widget size and location"""
+
+        self._debug = not self._debug
+        """Toggle help tooltips"""
+        for f in get_all_child_frames(self.mainFrame):
+            if self._debug:
+                f.toolTip.bind()
+            else:
+                f.toolTip.unbind()
+
+        """Toggle frame bg color"""
+        if self._debug:
+            for frame in get_all_child_frames(self.mainFrame):
+                frame.configure(bg=random_rgb())
+        else:
+            for frame, color in zip(get_all_child_frames(self.mainFrame), self.default_frame_color):
+                frame.configure(bg=color)
+
+    def clear_result(self):
+        for c in self.result_frame.winfo_children():
+            c.destroy()
+
+    def vehicle_inside(self):
+        self.clear_result()
+
+        info = ParkingInfo(inside=True)
+        result = info.search()
         if result.status_code / 100 == 2:
             result = result.json()
             self.show_result(result['data'])
