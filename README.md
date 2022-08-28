@@ -13,7 +13,7 @@
 
 - Cài đặt các package cần thiết bằng lệnh:
 `pip install -r requirements.txt`
-- Cài đặt [backend](https://github.com/White-Weasel/QuanLyGuiXe_Server)
+- Cài đặt [backend](https://github.com/White-Weasel/QuanLyGuiXe_Server#c%C3%A0i-%C4%91%E1%BA%B7t)
 - Khởi động chương trình: `py main.py`
 
 ## Vienamese Plate Dataset
