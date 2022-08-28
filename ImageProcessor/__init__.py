@@ -165,7 +165,8 @@ def apply_brightness_contrast(input_img, brightness=0, contrast=0):
     return buf
 
 
-def odd_paercent(in_int: int, percent: float):
+def odd_percent(in_int: int, percent: float):
+    """Return an odd number that is near a percentage of the input number"""
     result = int(in_int * percent)
     if result % 2 == 0:
         result += 1
@@ -174,13 +175,18 @@ def odd_paercent(in_int: int, percent: float):
 
 def gray_upscale(in_img: numpy.ndarray, height: int, blur_percent: float = 0.03):
     in_img = cv2.cvtColor(in_img, cv2.COLOR_RGB2GRAY)
-    in_img = cv2.cvtColor(in_img, cv2.COLOR_GRAY2RGB)
+    in_h = in_img.shape[0]
+
+    blur_percent = (height - in_h) / 50 / 100
+    blur_size = odd_percent(height, blur_percent)
+    print(f"blursize={blur_size}")
+    print(f"blur percent = {blur_percent * 100}")
 
     in_img = imutils.resize(in_img, height=height)
-
-    blur_size = odd_paercent(height, blur_percent)
-    in_img = cv2.GaussianBlur(in_img, (blur_size, blur_size), 0)
-    in_img = apply_brightness_contrast(in_img, -20, 50)
+    if blur_size > 1:
+        in_img = cv2.GaussianBlur(in_img, (blur_size, blur_size), 0)
+        in_img = apply_brightness_contrast(in_img, -20, 50)
+    in_img = cv2.cvtColor(in_img, cv2.COLOR_GRAY2RGB)
 
     return in_img
 

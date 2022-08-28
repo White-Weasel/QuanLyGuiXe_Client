@@ -71,10 +71,15 @@ class GUI(tkinter.Tk, metaclass=utls.Singleton):
         def report():
             ReportWindow(name='report')
 
+        def err():
+            raise TypeError('tpe err')
+
         menubar = Menu(self)
         filemenu = Menu(menubar, tearoff=0)
         filemenu.add_command(label="Search", command=search)
         filemenu.add_command(label="Report", command=report)
+        filemenu.add_command(label="Err", command=err)
+
         filemenu.add_separator()
         filemenu.add_command(label="Exit", command=self.quit)
         menubar.add_cascade(label="File", menu=filemenu)
@@ -190,27 +195,10 @@ class MainFrame(MyFrame, metaclass=utls.Singleton):
         self.plate_cam = PlateDetectWidget(master=self.plate_cam_frame,
                                            img_height=self.CAMERA_HEIGHT)
 
-        def set_random_plate_img(i: int = None):
-            def thread_target():
-                if i is None:
-                    a = random.randint(0, 2000)
-                else:
-                    a = i
-                self.plate_cam.set_img(img_from_url(
-                    rf"https://raw.githubusercontent.com/White-Weasel/QuanLyGuiXe_img/master/img/xemay{a}.jpg"),
-                    self.CAMERA_HEIGHT)
-                print(f'random img {a}')
-                logging.info(f'random img {a}')
-                return
-
-            t = threading.Thread(target=thread_target)
-            t.start()
-
-        set_random_plate_img(567)
         self.plate_cam.pack(side=TOP)
 
-        self.b1 = MyButton(self.plate_cam_frame, text='Next random img', height=2,
-                           command=partial(set_random_plate_img),
+        self.b1 = MyButton(self.plate_cam_frame, text='Xe tiep theo', height=2,
+                           command=partial(self.set_random_plate_img),
                            font=DEFAULT_FONT)
         self.b1.pack(side=BOTTOM)
 
@@ -273,10 +261,29 @@ class MainFrame(MyFrame, metaclass=utls.Singleton):
         self.close_gate_btn.pack(side=RIGHT, anchor=CENTER, padx=10)
         """
 
+        self.set_random_plate_img(567)
         self.default_frame_color = []
         for f in get_all_child_frames(self):
             self.default_frame_color.append(f.cget("background"))
         self.pack(fill=BOTH, expand=YES, padx=25, pady=25)
+
+    def set_random_plate_img(self, i: int = None):
+        self.clear_parking_info()
+
+        def thread_target():
+            if i is None:
+                a = random.randint(0, 2000)
+            else:
+                a = i
+            self.plate_cam.set_img(img_from_url(
+                rf"https://raw.githubusercontent.com/White-Weasel/QuanLyGuiXe_img/master/img/xemay{a}.jpg"),
+                self.CAMERA_HEIGHT)
+            print(f'random img {a}')
+            logging.info(f'random img {a}')
+            return
+
+        t = threading.Thread(target=thread_target)
+        t.start()
 
     def onBarcodeDetected(self):
         # TODO: change it to selected barcode
@@ -312,7 +319,11 @@ class MainFrame(MyFrame, metaclass=utls.Singleton):
             plate = None
         else:
             plate = plate.replace('-', '')
-        ticket = int(self.cur_barcode)
+
+        try:
+            ticket = int(self.cur_barcode)
+        except Exception as e:
+            ticket = None
         result = ParkingInfo(ticket=ticket, plate=plate)
         print(result)
         return result

@@ -5,8 +5,8 @@ import imutils
 from ImageProcessor import absolute_size_from_relative_size, draw_boxes, BoundingBox, gray_upscale, file_path
 
 # Constants.
-INPUT_WIDTH = 256
-INPUT_HEIGHT = 256
+INPUT_WIDTH = 416
+INPUT_HEIGHT = 416
 SCORE_THRESHOLD = 0.5
 NMS_THRESHOLD = 0.45
 CONFIDENCE_THRESHOLD = 0.75
@@ -123,7 +123,7 @@ def recognisePlate(input_img: numpy.ndarray,
     :param network: darknet yolo model that we are going to use
     :param min_confidence: min confidence
     :param draw: True: draw boxes and label on input image. False: do nothing
-    :return: array of BoundingBox
+    :return: array of relative BoundingBox
     """
     if network is None:
         network = RECOGNISE_PLATE_TINY_MODEL
